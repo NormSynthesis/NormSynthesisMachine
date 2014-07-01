@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/normGeneration/!svn/ver/3103/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/norm/reasoning
+END
+NormEngine.java
+K 25
+svn:wc:ra_dav:version-url
+V 113
+/normGeneration/!svn/ver/2916/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/norm/reasoning/NormEngine.java
+END
+NormReasoner.java
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/normGeneration/!svn/ver/3103/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/norm/reasoning/NormReasoner.java
+END
+JessFactsGenerator.java
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/normGeneration/!svn/ver/2919/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/norm/reasoning/JessFactsGenerator.java
+END
+JessFactType.java
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/norm/reasoning/JessFactType.java
+END

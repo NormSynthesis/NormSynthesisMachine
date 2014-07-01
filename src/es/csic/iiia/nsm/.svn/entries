@@ -1,0 +1,130 @@
+10
+
+dir
+3124
+https://svn.iiia.csic.es/normGeneration/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm
+https://svn.iiia.csic.es/normGeneration
+
+
+
+2014-07-01T14:02:23.283999Z
+3121
+jmorales
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+b1679d30-6fce-4992-9226-e97ebaafb75a
+
+IncorrectSetupException.java
+file
+
+
+
+
+2014-04-14T13:26:06.048314Z
+000c506ac19f44fd46e2737a3b2bd961
+2014-04-16T07:48:42.949750Z
+2889
+jmorales
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1110
+
+NormSynthesisMachine.java
+file
+
+
+
+
+2014-06-30T15:02:08.000000Z
+ddef11f1af09982821c72e2ed1e4be1d
+2014-06-30T15:31:56.010429Z
+3103
+jmorales
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+13122
+
+agent
+dir
+
+config
+dir
+
+examples
+dir
+
+
+
+delete
+
+metrics
+dir
+
+net
+dir
+
+norm
+dir
+
+perception
+dir
+
+strategy
+dir
+
+utilities
+dir
+
+visualization
+dir
+

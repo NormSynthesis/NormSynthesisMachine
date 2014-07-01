@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/normGeneration/!svn/ver/3120/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms
+END
+NormsInspectorFrame.java
+K 25
+svn:wc:ra_dav:version-url
+V 127
+/normGeneration/!svn/ver/2982/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/NormsInspectorFrame.java
+END
+NormsInspectorThread.java
+K 25
+svn:wc:ra_dav:version-url
+V 128
+/normGeneration/!svn/ver/2982/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/NormsInspectorThread.java
+END
+TreeGeneralizedNormsSeparator.java
+K 25
+svn:wc:ra_dav:version-url
+V 137
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/TreeGeneralizedNormsSeparator.java
+END
+TreeSeparator.java
+K 25
+svn:wc:ra_dav:version-url
+V 121
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/TreeSeparator.java
+END
+TreeInactiveNormsSeparator.java
+K 25
+svn:wc:ra_dav:version-url
+V 134
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/TreeInactiveNormsSeparator.java
+END
+NormsTracerFrame.form
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/NormsTracerFrame.form
+END
+NormsInspectorPanel.java
+K 25
+svn:wc:ra_dav:version-url
+V 127
+/normGeneration/!svn/ver/3120/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/NormsInspectorPanel.java
+END
+TreeActiveNormsSeparator.java
+K 25
+svn:wc:ra_dav:version-url
+V 132
+/normGeneration/!svn/ver/2880/Code/trunk/NormSynthesisMachine/src/es/csic/iiia/nsm/visualization/norms/TreeActiveNormsSeparator.java
+END
