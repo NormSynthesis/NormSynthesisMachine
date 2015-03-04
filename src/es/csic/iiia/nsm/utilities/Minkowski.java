@@ -42,7 +42,7 @@ public class Minkowski {
 	 * @param a the first performance range
 	 * @param b the second performance range
 	 */
-	public double distance(List<Float> a, List<Float> b, int numValues)
+	public double distance(List<Double> a, List<Double> b, int numValues)
 	throws IllegalArgumentException {
 		
 		double dist = 0;

@@ -1,8 +1,7 @@
 package es.csic.iiia.nsm.norm;
 
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.net.norm.NetworkNode;
 
 /**
@@ -26,7 +25,7 @@ import es.csic.iiia.nsm.net.norm.NetworkNode;
  * 
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  * @see NormModality
- * @see AgentAction
+ * @see EnvironmentAgentAction
  */
 public class Norm implements Comparable<Norm>, NetworkNode {
 
@@ -37,8 +36,8 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	private int id; // the id of the norm
 	private SetOfPredicatesWithTerms precondition; // the norm precondition
 	private NormModality modality; // the modality of the deontic operator
-	private AgentAction action; // the action of the deontic operator
-	private Goal goal; // the goal for what the norm was created to
+	private EnvironmentAgentAction action; // the action of the deontic operator
+//	private Goal goal; // the goal for what the norm was created to
 	
 	//---------------------------------------------------------------------------	
 	// Methods
@@ -53,11 +52,11 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * @param goal the goal that the norm was generated to regulate 
 	 */
 	public Norm(SetOfPredicatesWithTerms precondition, NormModality modality, 
-			AgentAction action, Goal goal) {
+			EnvironmentAgentAction action) {
 		this.precondition = precondition;
 		this.modality = modality;
 		this.action = action;
-		this.goal = goal;
+//		this.goal = goal;
 	}
 
 	/**
@@ -84,7 +83,7 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * @return the name of the norm
 	 */
 	public String getName() {
-		return "N" + id;
+		return "n" + id;
 	}
 	
 	/**
@@ -110,21 +109,21 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * Returns the action that the norm regulates
 	 * 
 	 * @return the action that the norm regulates
-	 * @see AgentAction
+	 * @see EnvironmentAgentAction
 	 */
-	public AgentAction getAction() {
+	public EnvironmentAgentAction getAction() {
 		return this.action;
 	}
 
-	/**
-	 * Returns the goal for which the norm was created to
-	 * 
-	 * @return the goal for which the norm was created to
-	 * @see Goal
-	 */
-	public Goal getGoal() {
-		return this.goal;
-	}
+//	/**
+//	 * Returns the goal for which the norm was created to
+//	 * 
+//	 * @return the goal for which the norm was created to
+//	 * @see Goal
+//	 */
+//	public Goal getGoal() {
+//		return this.goal;
+//	}
 	
 	/**
 	 * Compares the id of this norm to that of {@code otherNorm}

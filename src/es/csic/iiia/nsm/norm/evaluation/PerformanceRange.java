@@ -25,18 +25,18 @@ public class PerformanceRange {
 	// Atributes
 	//---------------------------------------------------------------------------
 
-	private int maxSlidingValues;
+	private long maxSlidingValues;
 	private boolean hasNewValue;
 	
-	private List<Float> punctualValues;
-	private List<Float> average;
-	private List<Float> topBoundary;
-	private List<Float> bottomBoundary;
+	private List<Double> punctualValues;
+	private List<Double> movingAverage;
+	private List<Double> topBoundary;
+	private List<Double> bottomBoundary;
 	
-	private LinkedList<Float> slidingPunctualValues;
-	private LinkedList<Float> slidingAverage;
-	private LinkedList<Float> slidingTopBoundary;
-	private LinkedList<Float> slidingBottomBoundary;
+	private LinkedList<Double> slidingPunctualValues;
+	private LinkedList<Double> slidingMovingAverage;
+	private LinkedList<Double> slidingTopBoundary;
+	private LinkedList<Double> slidingBottomBoundary;
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -47,15 +47,15 @@ public class PerformanceRange {
 	 * 
 	 * @param size
 	 */
-	public PerformanceRange(int size){
-		this.punctualValues = new ArrayList<Float>();
-		this.average = new ArrayList<Float>();
-		this.topBoundary = new ArrayList<Float>();
-		this.bottomBoundary = new ArrayList<Float>();
-		this.slidingPunctualValues = new LinkedList<Float>();
-		this.slidingAverage = new LinkedList<Float>();
-		this.slidingTopBoundary = new LinkedList<Float>();
-		this.slidingBottomBoundary = new LinkedList<Float>();
+	public PerformanceRange(long size){
+		this.punctualValues = new ArrayList<Double>();
+		this.movingAverage = new ArrayList<Double>();
+		this.topBoundary = new ArrayList<Double>();
+		this.bottomBoundary = new ArrayList<Double>();
+		this.slidingPunctualValues = new LinkedList<Double>();
+		this.slidingMovingAverage = new LinkedList<Double>();
+		this.slidingTopBoundary = new LinkedList<Double>();
+		this.slidingBottomBoundary = new LinkedList<Double>();
 		
 		this.maxSlidingValues = size;
 		this.hasNewValue = false;
@@ -66,20 +66,20 @@ public class PerformanceRange {
 	 * 
 	 * @param value
 	 */
-	public void addValue(float value) {
+	public void addValue(double value) {
 		this.hasNewValue = true;
 		
 		/* Add new punctual value */
 		this.add(punctualValues, slidingPunctualValues, value);
 
 		/* Compute and add new average value */
-		float avg = this.getAvg();
-		this.add(average, slidingAverage, avg);
+		double avg = this.getAvg();
+		this.add(movingAverage, slidingMovingAverage, avg);
 		
 		/* Compute and add new boundaries values */
-		float stdDev = this.getStdDev();
-		float topBnd = avg + stdDev;
-		float btmBnd = avg - stdDev;
+		double stdDev = this.getStdDev();
+		double topBnd = avg + stdDev;
+		double btmBnd = avg - stdDev;
 		this.add(topBoundary, slidingTopBoundary, topBnd);
 		this.add(bottomBoundary, slidingBottomBoundary, btmBnd);
 		
@@ -87,8 +87,8 @@ public class PerformanceRange {
 		if(this.slidingPunctualValues.size() > this.maxSlidingValues) {
 			this.slidingPunctualValues.remove();
 		}
-		if(this.slidingAverage.size() > this.maxSlidingValues) {
-			this.slidingAverage.remove();
+		if(this.slidingMovingAverage.size() > this.maxSlidingValues) {
+			this.slidingMovingAverage.remove();
 		}
 		if(this.slidingTopBoundary.size() > this.maxSlidingValues) {
 			this.slidingTopBoundary.remove();
@@ -103,7 +103,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of all values in the punctual values series
 	 */
-	public List<Float> getPunctualValues() {
+	public List<Double> getPunctualValues() {
 		return this.punctualValues;
 	}
 	
@@ -112,8 +112,8 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of all values in the average series
 	 */
-	public List<Float> getAverage() {
-		return this.average;
+	public List<Double> getAverage() {
+		return this.movingAverage;
 	}
 	
 	/**
@@ -121,7 +121,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of all values in the top boundary series
 	 */
-	public List<Float> getTopBoundary() {
+	public List<Double> getTopBoundary() {
 		return this.topBoundary;
 	}
 	
@@ -130,7 +130,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of all values in the bottom boundary series
 	 */
-	public List<Float> getBottomBoundary() {
+	public List<Double> getBottomBoundary() {
 		return this.bottomBoundary;
 	}
 	
@@ -139,7 +139,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of last N values in the punctual values series
 	 */
-	public LinkedList<Float> getSlidingPunctualValues() {
+	public LinkedList<Double> getSlidingPunctualValues() {
 		return this.slidingPunctualValues;
 	}
 	
@@ -148,8 +148,8 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of last N values in the average series
 	 */
-	public LinkedList<Float> getSlidingAverage() {
-		return this.slidingAverage;
+	public LinkedList<Double> getSlidingAverage() {
+		return this.slidingMovingAverage;
 	}
 	
 	/**
@@ -157,7 +157,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of last N values in the top boundary series
 	 */
-	public LinkedList<Float> getSlidingTopBoundary() {
+	public LinkedList<Double> getSlidingTopBoundary() {
 		return this.slidingTopBoundary;
 	}
 	
@@ -166,7 +166,7 @@ public class PerformanceRange {
 	 * 
 	 * @return the list of last N values in the bottom boundary series
 	 */
-	public LinkedList<Float> getSlidingBottomBoundary() {
+	public LinkedList<Double> getSlidingBottomBoundary() {
 		return this.slidingBottomBoundary;
 	}
 	
@@ -175,8 +175,11 @@ public class PerformanceRange {
 	 * 
 	 * @return the last value of the punctual values series
 	 */
-	public float getCurrentPunctualValue() {
-		return this.slidingPunctualValues.getLast();
+	public double getCurrentPunctualValue() {
+		if(!this.slidingPunctualValues.isEmpty()) {
+			return this.slidingPunctualValues.getLast();
+		}
+		return 0f;
 	}
 	
 	/**
@@ -184,8 +187,11 @@ public class PerformanceRange {
 	 * 
 	 * @return the last value of the average series
 	 */
-	public float getCurrentAverage() {
-		return this.slidingAverage.getLast();
+	public double getCurrentAverage() {
+		if(!this.slidingMovingAverage.isEmpty()) {
+			return this.slidingMovingAverage.getLast();
+		}
+		return 0f;	
 	}
 	
 	/**
@@ -193,8 +199,11 @@ public class PerformanceRange {
 	 * 
 	 * @return the last value of the top boundary series
 	 */
-	public float getCurrentTopBoundary() {
-		return this.slidingTopBoundary.getLast();
+	public double getCurrentTopBoundary() {
+		if(!this.slidingTopBoundary.isEmpty()) {
+			return this.slidingTopBoundary.getLast();
+		}
+		return 0f;
 	}
 	
 	/**
@@ -202,19 +211,31 @@ public class PerformanceRange {
 	 * 
 	 * @return the last value of the bottom boundary series
 	 */
-	public float getCurrentBottomBoundary() {
-		return this.slidingBottomBoundary.getLast();
+	public double getCurrentBottomBoundary() {
+		if(!this.slidingBottomBoundary.isEmpty()) {
+			return this.slidingBottomBoundary.getLast();
+		}
+		return 0f;
 	}
 	
 	/**
-	 * Returns the number of values in the sliding series
+	 * Returns the number of values in the sliding values series
 	 * 
-	 * @return the number of values in the sliding series
+	 * @return the number of values in the sliding values series
 	 */
-	public int getNumSlidingValues() {
+	public int getNumSlidingPunctualValues() {
 		return this.slidingPunctualValues.size();
 	}
 
+	/**
+	 * Returns the number of values in the punctual values series
+	 * 
+	 * @return the number of values in the punctual values series
+	 */
+	public int getNumPunctualValues() {
+		return this.punctualValues.size();
+	}
+	
 	/**
 	 * Returns <tt>true</tt> if the performance range has a new
 	 * value to be plotted
@@ -246,8 +267,8 @@ public class PerformanceRange {
 	 * @param series the series 
 	 * @param slidingSeries the sliding window series
 	 */
-	private void add(List<Float> series, LinkedList<Float> slidingSeries,
-			float value) {
+	private void add(List<Double> series, LinkedList<Double> slidingSeries,
+			double value) {
 		
 		series.add(value);
 		slidingSeries.offer(value);
@@ -258,13 +279,13 @@ public class PerformanceRange {
 	 * 
 	 * @return the sum of the punctual values series
 	 */
-	private float getSum(){
-		float sum = 0;
+	private double getSum(){
+		double sum = 0;
 
 		if(this.punctualValues.size() == 0)
 			return 0f;
 
-		Iterator<Float> it = slidingPunctualValues.listIterator();
+		Iterator<Double> it = slidingPunctualValues.listIterator();
 		while(it.hasNext()){
 			sum+=it.next();
 		}
@@ -276,13 +297,13 @@ public class PerformanceRange {
 	 * 
 	 * @return the average of the punctual values series
 	 */
-	private float getAvg(){
+	private double getAvg(){
 		int numSlidingValues = this.slidingPunctualValues.size();
-		float sum = this.getSum();
+		double sum = this.getSum();
 		if(numSlidingValues == 0) {
 			return 0f;
 		}
-		float ret = sum / (float) numSlidingValues;
+		double ret = sum / (double) numSlidingValues;
 		return ret;
 	}
 	
@@ -291,9 +312,9 @@ public class PerformanceRange {
 	 * 
 	 * @return
 	 */
-	private float getStdDev() {
+	private double getStdDev() {
 		double stdDev = Math.sqrt(this.getVar());
-		return (float) stdDev;
+		return (double) stdDev;
 	}
 
 	/**
@@ -301,12 +322,12 @@ public class PerformanceRange {
 	 * 
 	 * @return the variance of the punctual values series
 	 */
-	private float getVar() {
+	private double getVar() {
 		int numSlidingValues = this.slidingPunctualValues.size();
-		float var = 0f;
+		double var = 0f;
 
-		for(Float num : this.slidingPunctualValues) {
-			var += Math.pow((num - slidingAverage.getLast()), 2);
+		for(Double num : this.slidingPunctualValues) {
+			var += Math.pow((num - slidingMovingAverage.getLast()), 2);
 		}
 		var /= numSlidingValues;
 		return var;

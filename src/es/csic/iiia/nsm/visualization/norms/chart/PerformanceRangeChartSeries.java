@@ -6,10 +6,8 @@ import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.net.norm.NSMNetwork;
 import es.csic.iiia.nsm.net.norm.NetworkNode;
 import es.csic.iiia.nsm.norm.evaluation.PerformanceRange;
-import es.csic.iiia.nsm.norm.evaluation.Utility;
 
 /**
  * A series of the performance range chart. The series may have one of
@@ -40,48 +38,21 @@ public class PerformanceRangeChartSeries extends XYSeries {
 	// Attributes
 	//---------------------------------------------------------------------------
 
-	private NSMNetwork<NetworkNode> network;
 	private UtilityChartSeriesType type;
+	private PerformanceRange perfRange;
 	private NetworkNode node;
-	private Dimension dim;
-	private Goal goal;
+//	private Dimension dim;
+//	private Goal goal;
 
 	private float alphaSpec;
+	private float alphaSpecTopBand;
+	private float alphaSpecBottomBand;
 	private float alphaGen;
 	private int x;
 
 	//---------------------------------------------------------------------------
 	// Methods
 	//---------------------------------------------------------------------------
-
-	/**
-	 * Constructor
-	 * 
-	 * @param nsm the norm synthesis machine
-	 * @param network the network of norms or norm groups
-	 * @param node the norm or norm group
-	 * @param dim the norm evaluation dimension
-	 * @param goal the system goal 
-	 */
-	public PerformanceRangeChartSeries(NormSynthesisMachine nsm, 
-			NSMNetwork<NetworkNode> network, NetworkNode node, Dimension dim, 
-			Goal goal) {
-
-		super(node.toString(), true, true);
-
-		this.node = node;
-		this.network = network;
-		this.dim = dim;
-		this.goal = goal;
-		this.type = UtilityChartSeriesType.PunctualValue;
-		this.x = 0;
-
-		NormSynthesisSettings nsmSettings = nsm.getNormSynthesisSettings();
-		this.alphaSpec = nsmSettings.getSpecialisationBoundary(dim, goal);
-		this.alphaGen = nsmSettings.getGeneralisationBoundary(dim, goal);
-
-		this.initValues();
-	}
 
 	/**
 	 * Constructor that specifies the {@code type} of the series
@@ -93,22 +64,23 @@ public class PerformanceRangeChartSeries extends XYSeries {
 	 * @param goal the system goal 
 	 */
 	public PerformanceRangeChartSeries(NormSynthesisMachine nsm, 
-			NSMNetwork<NetworkNode> network, NetworkNode node, Dimension dim, 
-			Goal goal, UtilityChartSeriesType type) {
+			String name, PerformanceRange perfRange, Dimension dim, Goal goal, 
+			UtilityChartSeriesType type) {
 
-		super(type, true, true);
+		super(name, true, true);
 
-		this.node = node;
-		this.network = network;
-		this.dim = dim;
-		this.goal = goal;
+		this.perfRange = perfRange;
 		this.type = type;
 		this.x = 0;
-
+		
 		NormSynthesisSettings nsmSettings = nsm.getNormSynthesisSettings();
 		this.alphaSpec = nsmSettings.getSpecialisationBoundary(dim, goal);
 		this.alphaGen = nsmSettings.getGeneralisationBoundary(dim, goal);
-
+		this.alphaSpecTopBand = alphaSpec +
+				nsmSettings.getSpecialisationBoundaryEpsilon(dim, goal);
+		this.alphaSpecBottomBand = alphaSpec -
+				nsmSettings.getSpecialisationBoundaryEpsilon(dim, goal);
+		
 		this.initValues();
 	}
 
@@ -116,11 +88,9 @@ public class PerformanceRangeChartSeries extends XYSeries {
 	 * Updates the series
 	 */
 	public void update() {
-		Utility utility = network.getUtility(node);
-		PerformanceRange perfRange = utility.getPerformanceRange(dim, goal);
-
 		if(perfRange.hasNewValue()) {
-			this.addValue(perfRange.getNumSlidingValues()-1);
+			int numSlidingValues = perfRange.getNumSlidingPunctualValues();
+			this.addValue((numSlidingValues-1));
 		}
 	}
 
@@ -128,10 +98,7 @@ public class PerformanceRangeChartSeries extends XYSeries {
 	 * Initialises the values of the series
 	 */
 	private void initValues() {
-		Utility utility = network.getUtility(node);
-		PerformanceRange perfRange = utility.getPerformanceRange(dim, goal);
-
-		for(int i=0; i<perfRange.getNumSlidingValues(); i++) {
+		for(int i=0; i<perfRange.getNumSlidingPunctualValues(); i++) {
 			this.addValue(i);
 		}
 	}
@@ -143,9 +110,7 @@ public class PerformanceRangeChartSeries extends XYSeries {
 	 * @param valueIndex the value index
 	 */
 	private void addValue(int valueIndex) {
-		Utility utility = network.getUtility(node);
-		PerformanceRange perfRange = utility.getPerformanceRange(dim, goal);
-		float num = 0f;
+		double num = 0f;
 		x++;
 
 		if(this.type == UtilityChartSeriesType.PunctualValue) {
@@ -163,9 +128,14 @@ public class PerformanceRangeChartSeries extends XYSeries {
 		else if(this.type == UtilityChartSeriesType.AlphaSpec)	{
 			num = alphaSpec;
 		}
+		else if(this.type == UtilityChartSeriesType.AlphaSpecTopBand)	{
+			num = alphaSpecTopBand;
+		}
+		else if(this.type == UtilityChartSeriesType.AlphaSpecBottomBand)	{
+			num = alphaSpecBottomBand;
+		}
 		else if(this.type == UtilityChartSeriesType.AlphaGen)	{
 			num = alphaGen; 
-			perfRange.setNewValue(false);
 		}
 
 		// Add value to the series
@@ -202,6 +172,8 @@ public class PerformanceRangeChartSeries extends XYSeries {
 		TopBoundary,
 		BottomBoundary,
 		AlphaSpec,
+		AlphaSpecTopBand,
+		AlphaSpecBottomBand,
 		AlphaGen;
 	}
 }

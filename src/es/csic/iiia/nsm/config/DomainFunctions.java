@@ -4,8 +4,8 @@ import java.util.List;
 
 import javax.swing.JPanel;
 
-import es.csic.iiia.nsm.agent.AgentAction;
-import es.csic.iiia.nsm.agent.AgentContext;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentContext;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.generation.Conflict;
@@ -67,7 +67,7 @@ public interface DomainFunctions {
 	 * @return a {@code SetOfPredicatesWithTerms} that describes 
 	 * 						the agent's local context 
 	 */
-	public AgentContext agentContextFunction(long agentId,
+	public EnvironmentAgentContext agentContextFunction(long agentId,
 			View view);
 	
 	/**
@@ -81,7 +81,7 @@ public interface DomainFunctions {
 	 * @return the {@code List} of actions that the reference agent
 	 * 					with id {@code agentId} performed in the transition of views
 	 */
-	public List<AgentAction> agentActionFunction(long agentId,
+	public List<EnvironmentAgentAction> agentActionFunction(long agentId,
 			ViewTransition viewTransition);
 	
 	//---------------------------------------------------------------------------
@@ -101,8 +101,27 @@ public interface DomainFunctions {
 	 * @see Goal
 	 * @see Conflict
 	 */
-	public List<Conflict> getNonRegulatedConflicts(Goal goal,
-			ViewTransition viewTransition);
+	public List<Conflict> getConflicts(Goal goal,	ViewTransition viewTransition);
+	
+	/**
+	 * Returns a {@code List} containing the new, non-regulated conflicts
+	 * that an agent with id {@code agentId} is involved in during a transition
+	 * of views {@code viewTransition}. That is, those conflicts that have been
+	 * originated  during the {@code viewTransition} by the agent with id
+	 * {@code agentId} to which no norms applied before the conflict.
+	 * 
+	 * @return 	a {@code List} containing the new, non-regulated conflicts
+	 * 					that an agent with id {@code agentId} is involved in during
+	 * 					a transition of views {@code viewTransition}. That is, those
+	 * 					conflicts that have been originated  during the
+	 * 					{@code viewTransition} by the agent with id {@code agentId}
+	 * 					to which no norms applied before the conflict.
+	 * 
+	 * @see Goal
+	 * @see Conflict
+	 */
+	public List<Conflict> getConflicts(Goal goal,	ViewTransition viewTransition,
+			long agentId);
 	
 	/**
 	 * Returns <tt>true</tt> if the agent with id {@code agentId} is in

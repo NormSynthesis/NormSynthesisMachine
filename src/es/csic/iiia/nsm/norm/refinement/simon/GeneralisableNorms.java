@@ -3,12 +3,10 @@ package es.csic.iiia.nsm.norm.refinement.simon;
 import java.util.ArrayList;
 import java.util.List;
 
-import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.agent.language.SetOfStrings;
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
 
@@ -36,9 +34,10 @@ public class GeneralisableNorms {
 	private List<Norm> allNorms;
 
 	private NormModality modality;
-	private AgentAction action;
-	private Goal goal;
+	private EnvironmentAgentAction action;
 	private PredicatesDomains predDomains;
+
+	//	private int genStep;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -55,19 +54,24 @@ public class GeneralisableNorms {
 	 * @param 	predDomains
 	 * @param 	genMode
 	 */
-	public GeneralisableNorms(NormIntersection intersection,
-			PredicatesDomains predDomains, NormGeneralisationMode genMode) {
-
-		this.predDomains = predDomains;
+	public GeneralisableNorms(NormIntersection intersection, int genStep) {
+		this.predDomains = intersection.getPredicatesDomains();
 		this.parent = null;
 		this.allNorms = new ArrayList<Norm>();
 
 		this.modality = intersection.getModality();
 		this.action = intersection.getAction();
-		this.goal = intersection.getGoal();
 
 		/* Search for the generalisable norms */
-		this.generate(intersection);
+		if(intersection.getDifferenceCardinality() > 0 && 
+				intersection.getDifferenceCardinality() <= genStep) 
+		{
+			this.generate(intersection);
+		}
+		
+		this.allNorms.add(normA);
+		this.allNorms.add(normB);
+		this.allNorms.add(parent);
 	}
 
 	/**
@@ -91,6 +95,8 @@ public class GeneralisableNorms {
 				new SetOfPredicatesWithTerms(intersection);
 		allPredicates.add(difference);
 
+		boolean existsParentNorm = false;
+		
 		for(String predicate : this.predDomains.getPredicates()) {
 			SetOfStrings terms = allPredicates.getTerms(predicate);
 
@@ -102,18 +108,14 @@ public class GeneralisableNorms {
 				String generalTerm = this.predDomains.getMostSpecifficGeneralisation(
 						predicate, termA, termB);
 
-				/* In case there is no term that generalises both terms, 
-				 * there is nothing to generalise */
-				if(generalTerm == null) {
-					this.parent = null;
-					return;
-				}
-
 				/* Add the general term to the parent norm, and one of the specific
 				 * terms to the each child norm */
-				parentPrecond.add(predicate, generalTerm);
-				normAPrecond.add(predicate, termA);
-				normBPrecond.add(predicate, termB);
+				if(generalTerm != null) {
+					parentPrecond.add(predicate, generalTerm);
+					normAPrecond.add(predicate, termA);
+					normBPrecond.add(predicate, termB);	
+					existsParentNorm = true;
+				}
 			}
 			/* Equal predicate. Add the pair predicate/term */
 			else {
@@ -124,13 +126,11 @@ public class GeneralisableNorms {
 			}
 		}
 
-		this.normA = new Norm(normAPrecond, modality, action, goal);
-		this.normB = new Norm(normBPrecond, modality, action, goal);
-		this.parent = new Norm(parentPrecond, modality, action, goal);
-
-		this.allNorms.add(normA);
-		this.allNorms.add(normB);
-		this.allNorms.add(parent);
+		if(existsParentNorm) {
+			this.normA = new Norm(normAPrecond, modality, action);
+			this.normB = new Norm(normBPrecond, modality, action);
+			this.parent = new Norm(parentPrecond, modality, action);
+		}
 	}
 
 	/**

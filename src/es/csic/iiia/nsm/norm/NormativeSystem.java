@@ -17,9 +17,28 @@ public class NormativeSystem extends ArrayList<Norm>{
 	
 	private static final long serialVersionUID = 8245680654641852211L; // Id
   
+	//---------------------------------------------------------------------------
+  // Attributes 
+  //---------------------------------------------------------------------------
+	
+	private int id;
+	
   //---------------------------------------------------------------------------
   // Methods 
   //---------------------------------------------------------------------------
+	
+	/**
+	 * 
+	 */
+	public NormativeSystem() {}
+	
+	/**
+	 * 
+	 * @param id
+	 */
+	public NormativeSystem(int id) {
+		this.id = id;
+	}
 	
 	/**
 	 * Adds a norm to the set
@@ -56,7 +75,7 @@ public class NormativeSystem extends ArrayList<Norm>{
 	 */
 	public boolean contains(Norm norm) {
 		for(Norm n : this) {
-			if(n.getId() == norm.getId())
+			if(n.equals(norm))
 				return true;
 		}
 		return false;
@@ -81,5 +100,31 @@ public class NormativeSystem extends ArrayList<Norm>{
 			}
 		}
 		return norm;
+	}
+	
+	/**
+	 * 
+	 * @param otherNS
+	 * @return
+	 */
+	public boolean isSubsetOf(NormativeSystem otherNS) {
+		
+		/* Do all the norms in this NS exist in the other NS? */
+		for(Norm norm : this) {
+			if(!otherNS.contains(norm)) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Returns the id of the normative system
+	 * 
+	 * @return the id of the normative system
+	 * @return
+	 */
+	public int getId() {
+		return this.id;
 	}
 }

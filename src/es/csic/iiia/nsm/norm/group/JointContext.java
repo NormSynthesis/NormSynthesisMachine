@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import es.csic.iiia.nsm.agent.AgentContext;
+import es.csic.iiia.nsm.agent.EnvironmentAgentContext;
 
 /**
  * A joint context is the combination of local contexts of several agents that
@@ -21,7 +21,7 @@ public class JointContext {
 	//---------------------------------------------------------------------------
 	
 	private List<Long> agentIds;
-	private Map<Long, AgentContext> agentContexts;
+	private Map<Long, EnvironmentAgentContext> agentContexts;
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -32,7 +32,7 @@ public class JointContext {
 	 */
 	public JointContext() {
 		this.agentIds = new ArrayList<Long>();
-		this.agentContexts = new HashMap<Long, AgentContext>();
+		this.agentContexts = new HashMap<Long, EnvironmentAgentContext>();
 	}
 	
 	/**
@@ -41,7 +41,7 @@ public class JointContext {
 	 * @param agentId the id of the agent
 	 * @param agentContext the context of the agent with id {@code agentId}
 	 */
-	public void addAgentContext(long agentId, AgentContext agentContext) {
+	public void addAgentContext(long agentId, EnvironmentAgentContext agentContext) {
 		if(!this.agentIds.contains(agentId)) {
 			this.agentIds.add(agentId);
 		}
@@ -62,7 +62,7 @@ public class JointContext {
 	 * 
 	 * @return the context of an agent with id {@code agentId}
 	 */
-	public AgentContext getContext(long agentId) {
+	public EnvironmentAgentContext getContext(long agentId) {
 		return this.agentContexts.get(agentId);
 	}
 	
@@ -71,7 +71,7 @@ public class JointContext {
 	 * 
 	 * @return all the agent contexts in the joint context
 	 */
-	public Collection<AgentContext> getAllContexts() {
+	public Collection<EnvironmentAgentContext> getAllContexts() {
 		return this.agentContexts.values();
 	}
 }

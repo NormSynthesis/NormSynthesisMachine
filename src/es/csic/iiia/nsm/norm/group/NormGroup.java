@@ -64,14 +64,11 @@ implements Comparable<NormGroup>, NetworkNode {
 	 * @see NormCompliance
 	 */
 	public void addNorm(Norm norm, NormCompliance nComplianceAction) {
-		if(nComplianceAction == NormCompliance.Fulfilment) {
+		if(nComplianceAction == NormCompliance.FULFILMENT) {
 			this.addFulfilledNorm(norm);
 		}
 		else {
 			this.addInfringedNorm(norm);
-		}
-		if(this.goal == null) {
-			this.goal = norm.getGoal();
 		}
 	}
 
@@ -83,7 +80,7 @@ implements Comparable<NormGroup>, NetworkNode {
 	public void addFulfilledNorm(Norm norm) {
 		this.fulfilledNorms.add(norm);
 		this.allNorms.add(norm);
-		this.normCompliance.put(norm, NormCompliance.Fulfilment);
+		this.normCompliance.put(norm, NormCompliance.FULFILMENT);
 
 		this.name = NormGroup.getDescription(fulfilledNorms, infringedNorms);
 	}
@@ -96,7 +93,7 @@ implements Comparable<NormGroup>, NetworkNode {
 	public void addInfringedNorm(Norm norm) {
 		this.infringedNorms.add(norm);
 		this.allNorms.add(norm);
-		this.normCompliance.put(norm, NormCompliance.Infringement);
+		this.normCompliance.put(norm, NormCompliance.INFRINGEMENT);
 
 		this.name = NormGroup.getDescription(fulfilledNorms, infringedNorms);
 	}
@@ -401,11 +398,11 @@ implements Comparable<NormGroup>, NetworkNode {
 
 			if(norm.equals(n1)) {
 				name += n1.getName() +
-						(n1cplAct == NormCompliance.Fulfilment ? "F" : "I");
+						(n1cplAct == NormCompliance.FULFILMENT ? "F" : "I");
 			}
 			else {
 				name += n2.getName() +
-						(n2cplAct == NormCompliance.Fulfilment ? "F" : "I");
+						(n2cplAct == NormCompliance.FULFILMENT ? "F" : "I");
 			}
 			name += ((i < numNorms) ? "-" : "");  
 		}

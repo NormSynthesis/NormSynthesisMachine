@@ -17,13 +17,16 @@ package es.csic.iiia.nsm.net.norm;
  * <li>	<tt>substitutability</tt>. Two norms are substitutable if, for each
  * 			situation where both norms apply, only one of them is necessary 
  * 			so that no conflicts arise.
- * <li>	<tt>exclusiveness</tt>; and
- * <li>	<tt>complementariness</tt>
+ * <li>	<tt>complementarity</tt>. Two norms are substitutable if, for each
+ * 			situation where both norms apply, the two of them are necessary 
+ * 			so that no conflicts arise.
+ * <li>	<tt>exclusiveness</tt>
+ * 
  * </ol>
  * 
  * @author "Javier Morales (jmorales@iiia.csic.es)"
- * @see OLDNormativeNetwork
+ * @see NormativeNetwork
  */
 public enum NetworkEdgeType {
-	Generalisation,	Substitutability;	
+	GENERALISATION,	SUBSTITUTABILITY, COMPLEMENTARITY;	
 }

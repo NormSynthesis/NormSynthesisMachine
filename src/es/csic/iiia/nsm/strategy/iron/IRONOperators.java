@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
+import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
+import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
@@ -17,6 +19,7 @@ import es.csic.iiia.nsm.norm.generation.NormGenerationMachine;
 import es.csic.iiia.nsm.norm.generation.cbr.CBRNormGenerationMachine;
 import es.csic.iiia.nsm.norm.reasoning.NormReasoner;
 import es.csic.iiia.nsm.norm.refinement.iron.GeneralisationTrees;
+import es.csic.iiia.nsm.norm.refinement.iron.PotentialGeneralisation;
 
 /**
  * The operators that the IRON strategy uses to perform norm synthesis.
@@ -32,36 +35,43 @@ public class IRONOperators {
 	//---------------------------------------------------------------------------
 	// Attributes
 	//---------------------------------------------------------------------------
-	
-	protected NormReasoner normReasoner;					// norm reasoner
+
+	protected NormReasoner normGenerationReasoner;					// norm reasoner
+	protected NormReasoner normEvaluationReasoner;	// norm reasoner
 	protected DomainFunctions dmFunctions;				// domain functions
 	protected PredicatesDomains predDomains;			// predicates and their domains
 	protected IRONStrategy strategy;							// the norm synthesis strategy
 	protected NormativeNetwork normativeNetwork;	// the normative network
-	protected NormGenerationMachine genMachine;	// the norm generation machine
-	protected GeneralisationTrees genTrees;			// potential generalisations
+	protected NormGenerationMachine genMachine;		// the norm generation machine
+	protected GeneralisationTrees genTrees;				// potential generalisations
+	protected NormSynthesisMetrics nsMetrics; 		// norm synthesis metrics
 	
 	//---------------------------------------------------------------------------
 	// Methods
 	//---------------------------------------------------------------------------
-	
+
 	/**
 	 *  
 	 * @param strategy
 	 * @param nsm
-	 * @param normReasoner
+	 * @param normGenerationReasoner
 	 */
-	public IRONOperators(IRONStrategy strategy, NormSynthesisMachine nsm, 
-			NormReasoner normReasoner) {
-		
+	public IRONOperators(IRONStrategy strategy, NormReasoner normGenerationReasoner, 
+			NormReasoner agentsNormApplicabilityReasoner, NormSynthesisMachine nsm) {
+
 		this.strategy = strategy;
-		this.normReasoner = normReasoner;
+		this.normGenerationReasoner = normGenerationReasoner;
+		this.normEvaluationReasoner = agentsNormApplicabilityReasoner;
+		
 		this.dmFunctions = nsm.getDomainFunctions();
-		this.genMachine = new CBRNormGenerationMachine(nsm, normReasoner);
 		this.predDomains = nsm.getPredicatesDomains();
 		this.normativeNetwork = nsm.getNormativeNetwork();
 		this.genTrees = strategy.getGeneralisationTrees();
-	}
+		this.nsMetrics = nsm.getNormSynthesisMetrics();
+
+		this.genMachine = new CBRNormGenerationMachine(this.normativeNetwork,
+				normGenerationReasoner, strategy, nsm.getRandom(), this.nsMetrics);
+		}
 
 	/**
 	 * Uses a CBR-based norm generation machine to generate norms from a given
@@ -76,7 +86,7 @@ public class IRONOperators {
 		List<Norm> normsToAdd = new ArrayList<Norm>();
 		List<Norm> normsToActivate = new ArrayList<Norm>();
 		List<Norm> norms;
-		
+
 		/* Norm generation */
 		norms = genMachine.generateNorms(conflict, dmFunctions, goal);
 
@@ -85,9 +95,12 @@ public class IRONOperators {
 			/* The norm does not exist -> Add it to the normative network */
 			if(!normativeNetwork.contains(norm)) {
 				normsToAdd.add(norm);
+				
+				System.out.println("----------------------------------------------");
+				System.out.println("NORM CREATED: " + norm);
 			}
 			/* The norm already exists and it is not active -> Activate it */
-			else	if(!normativeNetwork.isActive(norm)) {
+			else if(normativeNetwork.getState(norm) != NetworkNodeState.ACTIVE) {
 				normsToActivate.add(norm);
 			}
 		}
@@ -95,13 +108,21 @@ public class IRONOperators {
 		/* Add norms to add */
 		for(Norm norm : normsToAdd)	{
 			this.add(norm);
-			
+
 			/* Create norm's candidate generalisations */
 			this.genTrees.add(norm);
+			
+			/* Update complexities metrics */
+			this.nsMetrics.incNumNodesSynthesised();
+			this.nsMetrics.incNumNodesInMemory();
 		}
+		
 		/* Activate norms */
 		for(Norm norm : normsToActivate)	{
-			this.activate(norm);	
+			this.activate(norm);
+			
+			System.out.println("----------------------------------------------");
+			System.out.println("NORM RE-ACTIVATED: " + norm);
 		}
 	}
 
@@ -129,14 +150,15 @@ public class IRONOperators {
 	 * @see NormativeNetwork
 	 */
 	public void activate(Norm norm) {
-		normativeNetwork.activate(norm);
+		normativeNetwork.setState(norm, NetworkNodeState.ACTIVE);
 		normativeNetwork.getUtility(norm).reset();
 
 		/* Add norm to the norm engine */
-		this.normReasoner.addNorm(norm);
+		this.normGenerationReasoner.addNorm(norm);
+		this.normEvaluationReasoner.addNorm(norm);
 		this.strategy.normActivated(norm);
 	}
-	
+
 	/**
 	 * Deactivates a norm (i.e., sets its state to <tt>inactive</tt>
 	 * in the normative network
@@ -145,8 +167,18 @@ public class IRONOperators {
 	 * @see NormativeNetwork
 	 */
 	public void deactivate(NormativeNetwork normativeNetwork, Norm norm) {
-		normativeNetwork.deactivate(norm);
-		this.normReasoner.removeNorm(norm);
+		normativeNetwork.setState(norm, NetworkNodeState.INACTIVE);
+		
+		List<PotentialGeneralisation> potGens = this.genTrees.get(norm);
+		for(PotentialGeneralisation potGen : potGens) {
+			potGen.setPerformed(false);
+		}
+		
+//		this.normGenerationReasoner.removeNorm(norm);
+		this.normEvaluationReasoner.removeNorm(norm);
+		
+		System.out.println("----------------------------------------------");
+		System.out.println("NORM DEACTIVATED: " + norm);
 	}
 
 	/**
@@ -162,9 +194,11 @@ public class IRONOperators {
 	 */
 	public void generalise(NormativeNetwork normativeNetwork, 
 			Norm parent, List<Norm> children) {
-		
-		normativeNetwork.activate(parent);
-		normativeNetwork.add(parent);	
+
+		this.add(parent);
+		this.activate(parent);
+//		normativeNetwork.setState(parent, NetworkNodeState.ACTIVE);
+//		normativeNetwork.add(parent);	
 
 		/* Create norm's candidate generalisations */
 		this.genTrees.add(parent);
@@ -173,23 +207,33 @@ public class IRONOperators {
 		for(Norm ch : children) {
 			SetOfPredicatesWithTerms precond = ch.getPrecondition();
 			NormModality modality = ch.getModality();
-			AgentAction action = ch.getAction();
-			Goal goal = ch.getGoal();
+			EnvironmentAgentAction action = ch.getAction();
 			Norm child;
 
 			// If the norm exists, get it. Otherwise, create and add it to the normative network
-			if(normativeNetwork.contains(precond, modality, action, goal)) {
-				child = normativeNetwork.getNorm(precond, modality, action, goal);
+			if(normativeNetwork.contains(precond, modality, action)) {
+				child = normativeNetwork.getNorm(precond, modality, action);
 			}
 			else {
-				child = new Norm(precond, modality, action, goal);
+				child = new Norm(precond, modality, action);
 				normativeNetwork.add(child);
 			}
 
 			// Deactivate child norm and add relationship with the parent
-			this.normativeNetwork.addGeneralisation(child, parent);
-			this.normativeNetwork.deactivate(child);
+			if(!this.normativeNetwork.isAncestor(parent, child)) {
+				this.normativeNetwork.addGeneralisation(child, parent);	
+			}
+			this.deactivate(normativeNetwork, child);
+//			normativeNetwork.setState(child, NetworkNodeState.INACTIVE);
+			
+			/* Update complexities metrics */
+			this.nsMetrics.incNumNodesVisited();
 		}
+		
+		System.out.println("----------------------------------------------");
+		System.out.println("NORM GENERALISATION: ");
+		System.out.println("Parent: " + parent);
+		System.out.println("Children: " + children);
 	}
 
 	/**
@@ -204,12 +248,23 @@ public class IRONOperators {
 	 */
 	public void specialise(NormativeNetwork normativeNetwork, Norm norm, List<Norm> children) {
 
-		/* Deactivate norm*/
-		normativeNetwork.deactivate(norm);
-
+//		/* Deactivate norm*/
+//		normativeNetwork.setState(norm, NetworkNodeState.INACTIVE);
+		
+		this.deactivate(normativeNetwork, norm);
+		
 		/* Activate child norms*/
 		for(Norm child : normativeNetwork.getChildren(norm)) {
-			normativeNetwork.activate(child);
+//			normativeNetwork.setState(child, NetworkNodeState.ACTIVE);
+			this.deactivate(normativeNetwork, child);
+			
+			/* Update complexities metrics */
+			this.nsMetrics.incNumNodesVisited();
 		}
+		
+		System.out.println("----------------------------------------------");
+		System.out.println("NORM SPECIALISATION: ");
+		System.out.println("Norm: " + norm);
+		System.out.println("Children: " + children);
 	}
 }

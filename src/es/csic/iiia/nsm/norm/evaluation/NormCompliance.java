@@ -11,5 +11,5 @@ package es.csic.iiia.nsm.norm.evaluation;
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  */
 public enum NormCompliance {
-	Fulfilment, Infringement;
+	FULFILMENT, INFRINGEMENT;
 }

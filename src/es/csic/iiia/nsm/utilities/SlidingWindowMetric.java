@@ -12,16 +12,16 @@ import java.util.LinkedList;
 public class SlidingWindowMetric {
 
 	private boolean newValue;
-	private int size = 0;
-	private LinkedList<Float> queue = null;
+	private long size = 0;
+	private LinkedList<Double> queue = null;
 
 	/**
 	 * Constructor
 	 * 
 	 * @param size
 	 */
-	public SlidingWindowMetric(int size){
-		queue = new LinkedList<Float>();
+	public SlidingWindowMetric(long size){
+		queue = new LinkedList<Double>();
 		this.size = size;
 		this.newValue = false;
 	}
@@ -31,7 +31,7 @@ public class SlidingWindowMetric {
 	 * 
 	 * @param value
 	 */
-	public void  addValue(float value){
+	public void  addValue(double value){
 		queue.offer(value);
 		if(queue.size()>this.size)
 			queue.remove();
@@ -59,7 +59,7 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getLastValue() {
+	public double getLastValue() {
 		return this.queue.getLast();
 	}
 
@@ -68,13 +68,13 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getSum(){
-		float sum = 0;
+	public double getSum(){
+		double sum = 0;
 
 		if(this.getNumvalues() == 0)
 			return 0f;
 
-		Iterator<Float> it = queue.listIterator();
+		Iterator<Double> it = queue.listIterator();
 		while(it.hasNext()){
 			sum+=it.next();
 		}
@@ -86,14 +86,14 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getSumUntil(int idx){
-		float sum = 0;
+	public double getSumUntil(int idx){
+		double sum = 0;
 		int i = 0;
 		
 		if(this.getNumvalues() == 0)
 			return 0f;
 
-		Iterator<Float> it = queue.listIterator();
+		Iterator<Double> it = queue.listIterator();
 		while(it.hasNext() && i<=idx){
 			sum+=it.next();
 			i++;
@@ -105,30 +105,30 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getStdDev() {
+	public double getStdDev() {
 		double stdDev = Math.sqrt(this.getVar());
-		return (float) stdDev;
+		return (double) stdDev;
 	}
 	
 	/**
 	 * 
 	 * @return
 	 */
-	public float getStdDevUntil(int idx) {
+	public double getStdDevUntil(int idx) {
 		double stdDev = Math.sqrt(this.getVarUntil(idx));
-		return (float) stdDev;
+		return (double) stdDev;
 	}
 	
 	/**
 	 * 
 	 * @return
 	 */
-	public float getVar() {
+	public double getVar() {
 		int numValues = this.getNumvalues();
-		float avg = this.getAvg();
-		float var = 0f;
+		double avg = this.getAvg();
+		double var = 0f;
 
-		for(Float num : queue) {
+		for(Double num : queue) {
 			var += Math.pow((num - avg), 2);
 		}
 		var /= numValues;
@@ -139,13 +139,13 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getVarUntil(int idx) {
+	public double getVarUntil(int idx) {
 		int numValues = idx+1;
 		int i =0 ;
-		float avg = this.getAvgUntil(idx);
-		float var = 0f;
+		double avg = this.getAvgUntil(idx);
+		double var = 0f;
 
-		for(Float num : queue) {
+		for(Double num : queue) {
 			if(i>idx)
 				break;
 			
@@ -160,14 +160,14 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getAvg(){
-		float sum = this.getSum();
+	public double getAvg(){
+		double sum = this.getSum();
 		int numValues = this.getNumvalues();
 
 		if(numValues == 0)
 			return 0f;
 
-		float ret = sum / (float) numValues;
+		double ret = sum / (double) numValues;
 		return ret;
 	}
 	
@@ -175,14 +175,28 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public float getAvgUntil(int idx){
-		float sum = this.getSumUntil(idx);
+	public double getMedian() {
+		long size = this.queue.size();
+		int middle = this.queue.size() / 2;
+    if (size % 2 == 1) {
+        return queue.get(middle);
+    } else {
+        return (queue.get(middle-1) + queue.get(middle)) / 2.0;
+    }
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public double getAvgUntil(int idx){
+		double sum = this.getSumUntil(idx);
 		int numValues = idx+1;
 
 		if(numValues == 0)
 			return 0f;
 
-		float ret = sum / (float) numValues;
+		double ret = sum / (double) numValues;
 		return ret;
 	}
 
@@ -190,7 +204,7 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public int getSize() {
+	public long getSize() {
 		return size;
 	}
 
@@ -199,10 +213,10 @@ public class SlidingWindowMetric {
 	 *   
 	 * @return the sum
 	 */
-	public float getPosNumSum() {
-		float ret = 0;
+	public double getPosNumSum() {
+		double ret = 0;
 
-		for(float value : queue) {
+		for(double value : queue) {
 			if(value >= 0) {
 				ret += value;
 			}
@@ -215,10 +229,10 @@ public class SlidingWindowMetric {
 	 *   
 	 * @return the sum
 	 */
-	public float getNegNumSum() {
-		float ret = 0;
+	public double getNegNumSum() {
+		double ret = 0;
 
-		for(float value : queue) {
+		for(double value : queue) {
 			if(value < 0) {
 				ret += value;
 			}
@@ -233,7 +247,7 @@ public class SlidingWindowMetric {
 	 */
 	public int getNumvalues() {
 		int c = 0;
-		for(Float f : queue) {
+		for(Double f : queue) {
 			c++;
 		}
 		return c;
@@ -244,7 +258,7 @@ public class SlidingWindowMetric {
 	 * @param i
 	 * @return
 	 */
-	public float getValue(int i) {
+	public double getValue(int i) {
 		return this.queue.get(i);
 	}
 
@@ -253,10 +267,10 @@ public class SlidingWindowMetric {
 	 *   
 	 * @return the sum
 	 */
-	public float getNumValuesUnder(float value) {
-		float ret = 0;
+	public double getNumValuesUnder(double value) {
+		double ret = 0;
 
-		for(float val : queue) {
+		for(double val : queue) {
 			if(val < value) {
 				ret += val;
 			}
@@ -269,10 +283,10 @@ public class SlidingWindowMetric {
 	 *   
 	 * @return the sum
 	 */
-	public float getNumValuesOver(float value) {
-		float ret = 0;
+	public double getNumValuesOver(double value) {
+		double ret = 0;
 
-		for(float val : queue) {
+		for(double val : queue) {
 			if(val >= value) {
 				ret += val;
 			}
@@ -293,7 +307,7 @@ public class SlidingWindowMetric {
 	 * 
 	 * @return
 	 */
-	public int size() {
+	public long size() {
 		return this.size;
 	}
 }

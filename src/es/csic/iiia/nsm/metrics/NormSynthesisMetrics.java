@@ -37,11 +37,24 @@ public interface NormSynthesisMetrics {
 	public int getNormativeNetworkCardinality();
 	
 	/**
-	 * Returns  the cardinality of the normative system
+	 * Returns the minimality of the normative system
+	 * (i.e., its cardinality)
 	 * 
-	 * @return the cardinality of the normative system
+	 * @return 	the minimality of the normative system
+	 * 					(i.e., its cardinality)
 	 */
-	public int getNormativeSystemCardinality();
+	public int getNormativeSystemMinimality();
+	
+	/**
+	 * Returns the f-minimality (Fitoussi's minimality)
+	 * of the normative system (i.e., the number of leave
+	 * norms it represetents)
+	 * 
+	 * @return 	the f-minimality (Fitoussi's minimality)
+	 * 					of the normative system (i.e., the number of leave
+	 * 					norms it represetents)
+	 */
+	public int getNormativeSystemFitoussiMinimality();
 	
 	/**
 	 * Returns the {@code List} of norms that have been added to
@@ -77,9 +90,94 @@ public interface NormSynthesisMetrics {
 	 * @see Utility
 	 */
 	public Utility getNormUtility(Norm norm);
+		
+	/**
+	 * 
+	 */
+	public void newNonRegulatedConflictsSolvedThisTick();
+	
+	/**
+	 * 
+	 */
+	public void resetNonRegulatedConflicts();
+	
+	/**
+	 * 
+	 * @param timeCost
+	 */
+	public void addNewComputationTime(double compTime);
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public Utility getNormativeSystemUtility();
+	
+	/**
+	 * 
+	 */
+	public void incNumNodesVisited();
+	
+	/**
+	 * 
+	 */
+	public void incNumNodesInMemory();
+	
+	/**
+	 * 
+	 */
+	public void incNumNodesSynthesised();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public long getNumNodesVisited();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public long getNumNodesInMemory();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public long getNumNodesSynthesised();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public double getMinComputationTime();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public double getMaxComputationTime();
+
+	/**
+	 * 
+	 * @return
+	 */
+	public double getMedianComputationTime();
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public double getTotalComputationTime();
+
+	/**
+	 * 
+	 * @return
+	 */
+	public long getNumTicksOfStability();
 	
 	/**
 	 * Updates the metrics
 	 */
-	public void update();
+	public void update(double timeStep);
 }

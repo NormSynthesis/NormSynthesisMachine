@@ -8,22 +8,23 @@ import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.metrics.DefaultMetrics;
-import es.csic.iiia.nsm.metrics.IRONMetrics;
+import es.csic.iiia.nsm.metrics.DefaultNormSynthesisMetrics;
 import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
-import es.csic.iiia.nsm.metrics.SIMONMetrics;
-import es.csic.iiia.nsm.metrics.XSIMONMetrics;
 import es.csic.iiia.nsm.net.norm.DefaultOmegaFunction;
+import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.net.norm.OmegaFunction;
+import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormativeSystem;
 import es.csic.iiia.nsm.norm.group.net.NormGroupNetwork;
+import es.csic.iiia.nsm.norm.reasoning.NormReasoner;
 import es.csic.iiia.nsm.perception.Monitor;
 import es.csic.iiia.nsm.perception.Sensor;
 import es.csic.iiia.nsm.strategy.NormSynthesisStrategy;
 import es.csic.iiia.nsm.strategy.iron.IRONStrategy;
+import es.csic.iiia.nsm.strategy.lion.LIONStrategy;
 import es.csic.iiia.nsm.strategy.simon.SIMONStrategy;
-import es.csic.iiia.nsm.strategy.xsimon.XSIMONStrategy;
+import es.csic.iiia.nsm.strategy.simonPlus.SIMONPlusStrategy;
 import es.csic.iiia.nsm.visualization.NormSynthesisInspector;
 
 /**
@@ -61,22 +62,12 @@ public class NormSynthesisMachine {
 	public enum NormGeneralisationMode {
 		None, Shallow, Deep;
 	}
-	
-	//---------------------------------------------------------------------------
-	// Static attributes
-	//---------------------------------------------------------------------------
-
-	private static Random randomizer;	// Randomiser
-
-	/* Static stuff */
-	static {
-		randomizer = new Random();
-	}
 
 	//---------------------------------------------------------------------------
 	// Attributes
 	//---------------------------------------------------------------------------
 
+	private Random randomizer;								// Randomiser
 	private List<Dimension> normEvDims;				// Norm evaluation dimensions
 	private NormSynthesisSettings settings;		// Norm synthesis settings
 	private Monitor monitor;									// Monitor to perceive the scenario
@@ -88,9 +79,13 @@ public class NormSynthesisMachine {
 	private DomainFunctions dmFunctions;			// Domain functions 
 	private NormSynthesisMetrics metrics;			// Norm synthesis metrics
 	private NormSynthesisInspector tracer; 		// GUI
+	
+	private NormReasoner normReasoner; // The norms reasoner
+	private NormReasoner normEvaluationReasoner;				// The norms reasoner
+
 	private boolean gui;											// Use GUI?
 	private boolean firstExecution;						// First execution of the strategy?
-	
+
 	//---------------------------------------------------------------------------
 	// Constructors 
 	//---------------------------------------------------------------------------
@@ -109,13 +104,15 @@ public class NormSynthesisMachine {
 	 */
 	public NormSynthesisMachine(NormSynthesisSettings settings, 
 			PredicatesDomains predDomains, DomainFunctions dmFunctions, 
-			boolean gui) 
-	{ 
+			boolean gui, long randomSeed) {
+
 		this.settings = settings;
 		this.predDomains = predDomains;
 		this.dmFunctions = dmFunctions;
 		this.gui = gui;
 		this.firstExecution = true;
+
+		this.randomizer = new Random(randomSeed);
 
 		/* Add norm evaluation dimensions */
 		this.normEvDims = new ArrayList<Dimension>();
@@ -125,101 +122,113 @@ public class NormSynthesisMachine {
 		/* Create the normative network (norms and relationships between norms) */
 		this.nNetwork = new NormativeNetwork(this);
 		this.nGroupNetwork = new NormGroupNetwork(this);
-
+		
+		this.omegaFunction = new DefaultOmegaFunction();
+		this.nNetwork.setOmegaFunction(this.omegaFunction);
+		
 		/* Create the monitor to perform system sensing */
 		this.monitor = new Monitor();
-
-		/* The Norm Synthesis Machine incorporates default utility 
-		 * and omega functions, and also a strategy (with its operators) */
-		OmegaFunction oFunc = new DefaultOmegaFunction();
-		this.setOmegaFunction(oFunc);
-
-		/* Create the GUI if required) */
-		if(this.gui) {
-			tracer = new NormSynthesisInspector(this);
-			tracer.show();	
-		}
 	}
 
 	//---------------------------------------------------------------------------
 	// Public methods 
 	//---------------------------------------------------------------------------
 
-	/**
-	 * Creates and sets the IRON norm synthesis strategy.
-	 * 
-	 * @see NormSynthesisStrategy
-	 * @see IRONStrategy
-	 */
-	public void useIRONNormSynthesisStrategy() {
-		this.useStrategy(new IRONStrategy(this));
-		this.metrics = new IRONMetrics(this.settings, this.nNetwork,
-				(IRONStrategy)this.strategy);
+	public void setup(NormSynthesisStrategy.Option option,
+			NormGeneralisationMode genMode, int genStep, 
+			NormSynthesisMetrics nsMetrics, OmegaFunction oFunction, 
+			List<Norm> poolOfNorms) {
+
+		this.metrics = nsMetrics;
+		this.omegaFunction = oFunction;
+		
+		/* Create omega function to retrieve the normative system
+		 * from the normative network */
+		if(this.omegaFunction == null) {
+			this.omegaFunction = new DefaultOmegaFunction();
+			this.nNetwork.setOmegaFunction(this.omegaFunction);
+		}
+		
+		/* Create default metrics */
+		if(this.metrics == null) {
+			this.metrics = new DefaultNormSynthesisMetrics(this);
+		}
+
+		/* Create norms reasoners */
+		this.normReasoner = new NormReasoner(this.settings.getSystemGoals(), 
+				this.predDomains, this.dmFunctions, this.metrics);
+		
+		this.normEvaluationReasoner = new NormReasoner(this.settings.getSystemGoals(), 
+				this.predDomains, this.dmFunctions, this.metrics);
+		
+		/* Create norm synthesis strategy */
+		switch(option) {
+
+		case IRON:
+			strategy = new IRONStrategy(this);
+			break;
+
+		case SIMON:
+			strategy = new SIMONStrategy(this,genMode,genStep);
+			break;
+			
+		case SIMONPlus:
+			strategy = new SIMONPlusStrategy(this,genMode,genStep);
+			this.nNetwork.setNormsDefaultUtility(0);
+			break;
+			
+		case LION:
+			strategy = new LIONStrategy(this,genMode,genStep);
+			this.nNetwork.setNormsDefaultUtility(0);
+			break;
+		}
+		
+		/* Add default pool of norms */
+		if(poolOfNorms != null) {
+			this.addDefaultNormativeSystem(poolOfNorms);
+		}
 	}
 
 	/**
-	 * Creates and sets the SIMON norm synthesis strategy
 	 * 
-	 * @see NormSynthesisStrategy
-	 * @see SIMONStrategy
+	 * @param strategy
+	 * @param nsMetrics
+	 * @param poolOfNorms
 	 */
-	public void useSIMONNormSynthesisStrategy(NormGeneralisationMode genMode,
-			int genStep) {
+	public void setup(NormSynthesisStrategy strategy, 
+			NormSynthesisMetrics nsMetrics, OmegaFunction oFunction, 
+			List<Norm> poolOfNorms) {
 
-		this.useStrategy(new SIMONStrategy(this, genMode, genStep));
-		this.metrics = new SIMONMetrics(this.settings, this.nNetwork,
-				(SIMONStrategy)this.strategy);
-
-
-	}
-
-	/**
-	 * Creates and sets the SIMON norm synthesis strategy
-	 * 
-	 * @see NormSynthesisStrategy
-	 * @see OLDxSIMONStrategy
-	 */
-	public void useXSIMONNormSynthesisStrategy(NormGeneralisationMode genMode,
-			int genStep) {
-
-		this.useStrategy(new XSIMONStrategy(this, genMode, genStep));
-		this.metrics = new XSIMONMetrics(this.settings, this.nNetwork,
-				(XSIMONStrategy)this.strategy);
-	}
-
-	/**
-	 * Sets a norm synthesis {@code strategy} defined by the user
-	 * 
-	 * @param strategy the norm synthesis strategy
-	 * @see NormSynthesisStrategy
-	 */
-	public void useStrategy(NormSynthesisStrategy strategy) {
 		this.strategy = strategy;
-		this.metrics = new DefaultMetrics(this.settings, this.nNetwork,
-				this.strategy);
-	}
-
-	/**
-	 * Sets the default omega function {@code DefaultOmegaFunction},
-	 * which keeps in the normative system those norms that are
-	 * <tt>active</tt> in the normative network
-	 * 
-	 * @see OmegaFunction
-	 * @see DefaultOmegaFunction
-	 */
-	public void useDefaultOmegaFunction() {
-		this.setOmegaFunction(new DefaultOmegaFunction());
-	}
-
-	/**
-	 * Sets an omega function defined by the user
-	 * 
-	 * @param omegaFunction the omega function defined by the user
-	 * @see OmegaFunction
-	 */
-	public void setOmegaFunction(OmegaFunction omegaFunction) {
-		this.omegaFunction = omegaFunction;
-		this.nNetwork.setOmegaFunction(omegaFunction);
+		
+		/* Create default metrics */
+		if(nsMetrics != null) {
+			this.metrics = nsMetrics;
+		}
+		else {
+			new DefaultNormSynthesisMetrics(this);
+		}
+		
+		/* Create omega function to retrieve the normative system
+		 * from the normative network */
+		if(oFunction != null) {
+			this.omegaFunction = oFunction;
+			this.nNetwork.setOmegaFunction(this.omegaFunction);
+		}
+		
+		/* Create norms reasoners */
+		this.normReasoner = 
+				new NormReasoner(this.settings.getSystemGoals(), 
+				this.predDomains, this.dmFunctions, this.metrics);
+		
+		this.normEvaluationReasoner = 
+				new NormReasoner(this.settings.getSystemGoals(), 
+				this.predDomains, this.dmFunctions, this.metrics);
+		
+		/* Add default pool of norms */
+		if(poolOfNorms != null) {
+			this.addDefaultNormativeSystem(poolOfNorms);
+		}
 	}
 
 	/**
@@ -244,17 +253,24 @@ public class NormSynthesisMachine {
 	 * @see NormSynthesisStrategy
 	 * @see NormativeSystem
 	 */
-	public NormativeSystem executeStrategy() throws IncorrectSetupException {
+	public NormativeSystem executeStrategy(double timeStep) 
+			throws IncorrectSetupException {
 
 		/* First, check that the NSM has been correctly setup */
 		if(this.firstExecution) {
 			this.firstExecution= false;
 			this.checkSetup();
+
+			/* Create the GUI if required) */
+			if(this.gui) {
+				tracer = new NormSynthesisInspector(this);
+				tracer.show();	
+			}
 		}
 
 		/* Executes the strategy and get the resulting normative system */
 		NormativeSystem ns = this.strategy.execute();
-		this.metrics.update();
+		this.metrics.update(timeStep);
 
 		if(this.gui) {
 			tracer.refresh();
@@ -282,14 +298,28 @@ public class NormSynthesisMachine {
 //		if(this.monitor.getNumSensors() == 0) {
 //			throw new IncorrectSetupException("No sensors have been added yet");
 //		}
-		if(this.omegaFunction == null) {
-			throw new IncorrectSetupException("Omega function not defined yet");
-		}
+//		if(this.omegaFunction == null) {
+//			throw new IncorrectSetupException("Omega function not defined yet");
+//		}
 		if(this.strategy == null) {
-			throw new IncorrectSetupException("Strategy not defined yet");
+			throw new IncorrectSetupException("Strategy not defined yet. Use method"
+					+ " \"setup()\" to set a strategy");
 		}
 	}
 
+	/** 
+	 * Adds a default normative system (i.e., a pool of norms
+	 * that will be active in the normative network)
+	 * 
+	 * @param poolOfNorms the pool of active norms in the normative network
+	 */
+	private void addDefaultNormativeSystem(List<Norm> poolOfNorms) {
+		for(Norm norm : poolOfNorms) {
+			this.nNetwork.add(norm);
+			this.nNetwork.setState(norm, NetworkNodeState.ACTIVE);
+		}
+	}
+	
 	//---------------------------------------------------------------------------
 	// Getters
 	//---------------------------------------------------------------------------
@@ -319,7 +349,7 @@ public class NormSynthesisMachine {
 	public PredicatesDomains getPredicatesDomains() {
 		return this.predDomains;
 	}
-	
+
 	/**
 	 * Returns the domain functions that allow to perform
 	 * norm synthesis for a specific domain
@@ -403,6 +433,23 @@ public class NormSynthesisMachine {
 	}
 
 	/**
+	 * Returns the norm reasoner
+	 * 
+	 * @return the norm reasoner
+	 */
+	public NormReasoner getNormReasoner() {
+		return this.normReasoner;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public NormReasoner getNormEvaluationReasoner() {
+		return this.normEvaluationReasoner;
+	}
+
+	/**
 	 * Use Graphical User Interface (norms tracer)?
 	 * 
 	 * @return <tt>true</tt> if the NSM must use GUI 
@@ -425,7 +472,7 @@ public class NormSynthesisMachine {
 	 * 
 	 * @return the random values generator
 	 */
-	public static Random getRandom() {
-		return randomizer;
+	public Random getRandom() {
+		return this.randomizer;
 	}
 }

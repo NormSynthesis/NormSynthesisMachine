@@ -54,9 +54,9 @@ extends HashMap<NormCompliance, HashMap<NormCompliance, NormGroup>> {
 		
 		Collections.sort(norms);
 		
-		this.put(NormCompliance.Fulfilment, 
+		this.put(NormCompliance.FULFILMENT, 
 				new HashMap<NormCompliance, NormGroup>());
-		this.put(NormCompliance.Infringement, 
+		this.put(NormCompliance.INFRINGEMENT, 
 				new HashMap<NormCompliance, NormGroup>());
 	}
 	

@@ -1,11 +1,10 @@
 package es.csic.iiia.nsm.norm.refinement.simon;
 
 import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.agent.language.SetOfStrings;
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
 
@@ -26,8 +25,7 @@ public class NormIntersection {
 	private PredicatesDomains predDomains;
 	
 	private NormModality modality;
-	private AgentAction action;
-	private Goal goal;
+	private EnvironmentAgentAction action;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -61,7 +59,6 @@ public class NormIntersection {
 		
 		this.modality = normA.getModality();
 		this.action = normA.getAction();
-		this.goal = normA.getGoal();
 		
 		this.intersection = new SetOfPredicatesWithTerms();
 		this.difference = new SetOfPredicatesWithTerms();
@@ -195,17 +192,8 @@ public class NormIntersection {
 	 * 
 	 * @return
 	 */
-	public AgentAction getAction() {
+	public EnvironmentAgentAction getAction() {
 		return this.action;
-	}
-	
-	/**
-	 * Returns the goal of norms A and B
-	 * 
-	 * @return the goal of norms A and B
-	 */
-	public Goal getGoal() {
-		return this.goal;
 	}
 	
 	/**
@@ -236,6 +224,15 @@ public class NormIntersection {
 				+ "Diff: " + this.difference.toString();
 	}
 
+	/**
+	 * Returns the predicates and domains employed to create the intersection
+	 * 
+	 * @return the predicates and domains employed to create the intersection
+	 */
+	public PredicatesDomains getPredicatesDomains() {
+		return this.predDomains;
+	}
+	
 	/**
 	 * Returns an identifier for two norms that can be intersected
 	 *  

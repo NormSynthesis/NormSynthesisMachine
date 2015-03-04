@@ -2,8 +2,9 @@ package es.csic.iiia.nsm.norm.refinement.iron;
 
 import java.util.List;
 
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
+import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
 
@@ -31,6 +32,7 @@ public class PotentialGeneralisation {
 	private Norm parent;
 	private List<Norm> children;
 	private boolean performed;
+	private NormSynthesisMetrics nsMetrics;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -42,10 +44,13 @@ public class PotentialGeneralisation {
 	 * @param parent the potential parent
 	 * @param children the children that are necessary to generalise
 	 */
-	public PotentialGeneralisation(Norm parent, List<Norm> children) {
+	public PotentialGeneralisation(Norm parent, List<Norm> children,
+			NormSynthesisMetrics nsMetrics) 
+	{
 		this.parent = parent;
 		this.children = children;
 		this.performed = false;
+		this.nsMetrics = nsMetrics;
 	}
 
 	/**
@@ -103,7 +108,10 @@ public class PotentialGeneralisation {
 		SetOfPredicatesWithTerms pPrecond = otherPotGen.getParent()
 				.getPrecondition();
 		NormModality pModality = otherPotGen.getParent().getModality();
-		AgentAction pAction = otherPotGen.getParent().getAction();
+		EnvironmentAgentAction pAction = otherPotGen.getParent().getAction();
+		
+		/* Update complexities metrics */
+		this.nsMetrics.incNumNodesVisited();
 		
 		if(!this.parent.getPrecondition().equals(pPrecond) ||
 				this.parent.getModality() != pModality ||
@@ -111,7 +119,11 @@ public class PotentialGeneralisation {
 			return false;
 		}
 			
-		for(Norm cNode : otherPotGen.getChildren()) {	
+		for(Norm cNode : otherPotGen.getChildren()) {
+			
+			/* Update complexities metrics */
+			this.nsMetrics.incNumNodesVisited();
+			
 			if(!this.containsChild(cNode)) {
 				return false;
 			}
@@ -131,7 +143,10 @@ public class PotentialGeneralisation {
 		for(Norm child : this.children) {			
 			SetOfPredicatesWithTerms cPrecond = norm.getPrecondition();
 			NormModality cModality = norm.getModality();
-			AgentAction cAction = norm.getAction();
+			EnvironmentAgentAction cAction = norm.getAction();
+			
+			/* Update complexities metrics */
+			this.nsMetrics.incNumNodesVisited();
 			
 			if(child.getPrecondition().equals(cPrecond) &&
 					child.getModality() == cModality &&

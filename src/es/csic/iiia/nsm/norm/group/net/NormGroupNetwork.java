@@ -1,5 +1,6 @@
 package es.csic.iiia.nsm.norm.group.net;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -7,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
-import es.csic.iiia.nsm.net.norm.NSMNetwork;
+import es.csic.iiia.nsm.net.norm.GeneralisationNetwork;
 import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.evaluation.NormCompliance;
@@ -18,7 +19,7 @@ import es.csic.iiia.nsm.norm.group.NormGroupCombination;
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  *
  */
-public class NormGroupNetwork extends NSMNetwork<NormGroup> {
+public class NormGroupNetwork extends GeneralisationNetwork<NormGroup> {
 
 	//---------------------------------------------------------------------------
 	// Static attributes
@@ -95,7 +96,7 @@ public class NormGroupNetwork extends NSMNetwork<NormGroup> {
 			if(!nGrComb.contains(nComplN1, nComplN2)) {
 				nGrComb.put(nComplN1, nComplN2, normGroup);
 				
-				this.normGroupStates.put(nGrComb, NetworkNodeState.Active);
+				this.normGroupStates.put(nGrComb, NetworkNodeState.ACTIVE);
 			}
 		}
 	}
@@ -105,11 +106,11 @@ public class NormGroupNetwork extends NSMNetwork<NormGroup> {
 	 * 
 	 * @param nGrComb the norm group combination
 	 */
-	public void deactivate(NormGroupCombination nGrComb) {
-		this.normGroupStates.put(nGrComb, NetworkNodeState.Inactive);
+	public void setState(NormGroupCombination nGrComb, NetworkNodeState state) {
+		this.normGroupStates.put(nGrComb, state);
 		
 		for(NormGroup nGroup : nGrComb.getAllNormGroups()) {
-			this.deactivate(nGroup);
+			this.setState(nGroup, state);
 		}
 	}
 	
@@ -120,7 +121,7 @@ public class NormGroupNetwork extends NSMNetwork<NormGroup> {
 	 * @return
 	 */
 	public boolean isActive(NormGroupCombination nGrComb) {
-		return this.normGroupStates.get(nGrComb) == NetworkNodeState.Active;
+		return this.normGroupStates.get(nGrComb) == NetworkNodeState.ACTIVE;
 	}
 
 	/**
@@ -140,7 +141,15 @@ public class NormGroupNetwork extends NSMNetwork<NormGroup> {
 	 * 					active in the network
 	 */
 	public List<NormGroup> getActiveNormGroups() {
-		return super.getActiveNodes();
+		List<NormGroup> ret = new ArrayList<NormGroup>();
+		
+		/* Add the node if it is active */
+		for(NormGroup nGroup : this.getNormGroups()) {
+			if(this.getState(nGroup) == NetworkNodeState.ACTIVE) {
+				ret.add(nGroup);
+			}
+		}		
+		return ret;
 	}
 	
 	/**

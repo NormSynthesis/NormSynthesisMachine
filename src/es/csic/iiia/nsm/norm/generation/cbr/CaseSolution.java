@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.perception.View;
 
@@ -29,8 +29,8 @@ public class CaseSolution {
 	// Attributes
 	//---------------------------------------------------------------------------
 	
-	private Map<View, Map<Long, AgentAction>> prohibitedActions;
-	private Map<View, Map<Long, AgentAction>> obligatedActions;
+	private Map<View, Map<Long, EnvironmentAgentAction>> prohibitedActions;
+	private Map<View, Map<Long, EnvironmentAgentAction>> obligatedActions;
 	private List<Norm> norms; 
 	
 	//---------------------------------------------------------------------------
@@ -41,8 +41,8 @@ public class CaseSolution {
 	 * Constructor
 	 */
 	public CaseSolution() {
-		this.prohibitedActions = new HashMap<View, Map<Long, AgentAction>>();
-		this.obligatedActions = new HashMap<View, Map<Long, AgentAction>>();
+		this.prohibitedActions = new HashMap<View, Map<Long, EnvironmentAgentAction>>();
+		this.obligatedActions = new HashMap<View, Map<Long, EnvironmentAgentAction>>();
 		this.norms = new ArrayList<Norm>();
 	}
 	
@@ -57,9 +57,9 @@ public class CaseSolution {
 	 * @param 	action the action that the agent is obligated to perform
 	 * 					in the given {@code view}
 	 */
-	public void addObligatedAction(View view, Long agentId, AgentAction action) {
+	public void addObligatedAction(View view, Long agentId, EnvironmentAgentAction action) {
 		if(!this.obligatedActions.containsKey(view)) {
-			this.obligatedActions.put(view, new HashMap<Long, AgentAction>());
+			this.obligatedActions.put(view, new HashMap<Long, EnvironmentAgentAction>());
 		}
 		this.obligatedActions.get(view).put(agentId, action);
 	}	
@@ -75,9 +75,9 @@ public class CaseSolution {
 	 * @param 	action the action that the agent is prohibited to perform
 	 * 					in the given {@code view}
 	 */
-	public void addProhibitedAction(View view, Long agentId, AgentAction action) {
+	public void addProhibitedAction(View view, Long agentId, EnvironmentAgentAction action) {
 		if(!this.prohibitedActions.containsKey(view)) {
-			this.prohibitedActions.put(view, new HashMap<Long, AgentAction>());
+			this.prohibitedActions.put(view, new HashMap<Long, EnvironmentAgentAction>());
 		}
 		this.prohibitedActions.get(view).put(agentId, action);
 	}
@@ -91,7 +91,7 @@ public class CaseSolution {
 	 * 					action in the given {@code view}, together with the
 	 * 					{@code action} they are prohibited to perform
 	 */
-	public Map<Long, AgentAction> getObligatedActions(View view) {
+	public Map<Long, EnvironmentAgentAction> getObligatedActions(View view) {
 		return this.obligatedActions.get(view);
 	}
 	
@@ -104,7 +104,7 @@ public class CaseSolution {
 	 * 					action in the given {@code view}, together with the
 	 * 					{@code action} they are prohibited to perform
 	 */
-	public Map<Long, AgentAction> getProhibitedActions(View view) {
+	public Map<Long, EnvironmentAgentAction> getProhibitedActions(View view) {
 		return this.prohibitedActions.get(view);
 	}
 

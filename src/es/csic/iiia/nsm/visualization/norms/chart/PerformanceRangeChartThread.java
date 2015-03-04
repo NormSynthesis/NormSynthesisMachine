@@ -41,10 +41,10 @@ extends Thread implements WindowListener {
 		this.refresh = false;
 		
 		if(node instanceof Norm) {
-			chart = new PerformanceRangeChartFrame(nsm, ((Norm)node).getGoal(), node);	
+			chart = new PerformanceRangeChartFrame(nsm, node);	
 		}
 		else if(node instanceof NormGroup) {
-			chart = new PerformanceRangeChartFrame(nsm, ((NormGroup)node).getGoal(), node);
+			chart = new PerformanceRangeChartFrame(nsm, node);
 		}
 		chart.pack();
     

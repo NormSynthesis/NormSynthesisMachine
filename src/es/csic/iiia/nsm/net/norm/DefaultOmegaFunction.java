@@ -21,10 +21,10 @@ public class DefaultOmegaFunction extends OmegaFunction {
 	 * @see OLDNormativeNetwork
 	 */
 	public void update(Norm norm, NormativeNetwork network) {
-		if(network.isActive(norm)) {
+		if(network.getState(norm) == NetworkNodeState.ACTIVE) {
 			normativeSystem.add(norm);
 		}
-		else if(!network.isActive(norm)) {
+		else if(network.getState(norm) != NetworkNodeState.ACTIVE) {
 			normativeSystem.remove(norm);
 		}
 	}

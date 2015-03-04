@@ -7,6 +7,7 @@ import java.util.Map;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.Goal;
+import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.evaluation.NormComplianceOutcomes;
@@ -26,7 +27,8 @@ public class SIMONUtilityFunction  {
 	//---------------------------------------------------------------------------
 
 	private Map<Norm, List<SetOfPredicatesWithTerms>> negRewardedNorms;
-
+	private NormSynthesisMetrics nsMetrics;
+	
 	//---------------------------------------------------------------------------
 	// Methods 
 	//---------------------------------------------------------------------------
@@ -34,8 +36,9 @@ public class SIMONUtilityFunction  {
 	/**
 	 * Constructor
 	 */
-	public SIMONUtilityFunction() {
+	public SIMONUtilityFunction(NormSynthesisMetrics nsMetrics) {
 		this.negRewardedNorms = new HashMap<Norm, List<SetOfPredicatesWithTerms>>();
+		this.nsMetrics = nsMetrics;
 	}
 
 	/**
@@ -84,9 +87,12 @@ public class SIMONUtilityFunction  {
 				if(reward < 1.0f) {
 					List<SetOfPredicatesWithTerms> agContexts = 
 							nCompliance.getAgentContextsWhereNormApplies(appNorm);
-
+	
 					this.negRewardedNorms.put(appNorm, agContexts);
 				}
+				
+//				/* Update complexities metrics */
+//				this.nsMetrics.incNumNodesVisited();
 			}
 			break;
 
@@ -107,13 +113,15 @@ public class SIMONUtilityFunction  {
 				if(reward < 1.0f) {
 					List<SetOfPredicatesWithTerms> agContexts = 
 							nCompliance.getAgentContextsWhereNormApplies(violNorm);
-
+	
 					this.negRewardedNorms.put(violNorm, agContexts);
 				}
+				
+//				/* Update complexities metrics */
+//				this.nsMetrics.incNumNodesVisited();
 			}
 			break;
 		}
-
 		return this.negRewardedNorms;
 	}
 }

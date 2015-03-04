@@ -11,14 +11,13 @@ import java.util.List;
 import java.util.Map;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
-import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
 import es.csic.iiia.nsm.norm.NormativeSystem;
 import es.csic.iiia.nsm.norm.evaluation.Utility;
-import es.csic.iiia.nsm.norm.refinement.xsimon.NormAttribute;
+import es.csic.iiia.nsm.norm.refinement.lion.NormAttribute;
 
 /**
  * A normative network is a directed graph whose nodes stand for norms
@@ -39,22 +38,21 @@ import es.csic.iiia.nsm.norm.refinement.xsimon.NormAttribute;
  * @see Norm
  * @see Utility
  */
-public class NormativeNetwork extends NSMNetwork<Norm> {
+public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 
 	//---------------------------------------------------------------------------
 	// Static attributes
 	//---------------------------------------------------------------------------
 	
-	private static int NORM_COUNT = 0;			// number of norms in the network
+	private int NORM_COUNT = 0;	// number of norms in the network
 
 	//---------------------------------------------------------------------------
 	// Attributes
 	//---------------------------------------------------------------------------
 
 	private OmegaFunction omegaFunction;								// the omega function
-	private Map<Integer, Norm> ids;											// nodes identifiers	
 	private Map<Norm, List<NormAttribute>> attributes; 	// norm attributes
-	private Map<Norm, Integer> genLevels;								// generalisation levels
+	private Map<Integer,Norm> ids;											// indexed norms
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -64,11 +62,10 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @param nsm
 	 */
 	public NormativeNetwork(NormSynthesisMachine nsm) {
-		super(nsm);		
+		super(nsm);
 		
-		this.ids = new HashMap<Integer, Norm>();
 		this.attributes = new HashMap<Norm, List<NormAttribute>>();
-		this.genLevels = new HashMap<Norm, Integer>();
+		this.ids = new HashMap<Integer,Norm>();
 	}
 
 	/**
@@ -78,18 +75,16 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 
 	 * @param norm the norm to add
 	 */
+	@Override
 	public void add(Norm norm) {
 		if(!this.contains(norm)) {
-
-			norm.setId(++NORM_COUNT);
+			if(norm.getId() == 0) {
+				norm.setId(++NORM_COUNT);	
+			}			
 			super.add(norm);
 
-			/* Set the generalisation level of the norm */
-			this.genLevels.put(norm, 1); 
-			
-			/* Index norm for fast access */
-			this.ids.put(norm.getId(), norm);
 			this.attributes.put(norm, new ArrayList<NormAttribute>());
+			this.ids.put(norm.getId(), norm);
 		}
 	}
 	
@@ -99,6 +94,9 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @param tag
 	 */
 	public void addAttribute(Norm norm, NormAttribute attribute) {
+		if(!this.contains(norm)) {
+			this.add(norm);
+		}
 		if(!this.attributes.containsKey(norm)) {
 			this.attributes.put(norm, new ArrayList<NormAttribute>());
 		}
@@ -122,17 +120,6 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	/**
 	 * 
 	 * @param norm
-	 * @param attributes
-	 */
-	public void addAttributes(Map<Norm,List<NormAttribute>> attributes) {
-		for(Norm norm : attributes.keySet()) {
-			this.addAttributes(norm, attributes.get(norm));
-		}
-	}
-	
-	/**
-	 * 
-	 * @param norm
 	 * @param tag
 	 */
 	public void removeAttribute(Norm norm, NormAttribute attribute) {
@@ -147,90 +134,95 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	
 	/**
 	 * 
-	 * @param child
-	 * @param parent
+	 * @param norm
+	 * @param attributes
 	 */
-	public void addGeneralisation(Norm child, Norm parent) {
-		super.addRelationship(child, parent, NetworkEdgeType.Generalisation);
-		
-		/* Set the level of the parent node */
-		int gLevel = this.genLevels.get(child);
-		this.genLevels.put(parent, gLevel+1);	
+	public void removeAttributes(Norm norm, List<NormAttribute> attributes) {
+		for(NormAttribute attr : attributes) {
+			this.removeAttribute(norm, attr);
+		}
 	}
 	
 	/**
 	 * 
-	 * @param child
-	 * @param parent
+	 * @param norm
 	 */
-	public void removeGeneralisation(Norm child, Norm parent) {
-		super.removeRelationship(child, parent, NetworkEdgeType.Generalisation);
+	public void resetAttributes(Norm norm) {
+		if(this.attributes.containsKey(norm)) {
+			this.attributes.get(norm).clear();
+		}
 	}
 
 	/**
+	 * Adds a substitutability relationship between two norms
 	 * 
-	 * @param child
-	 * @param parent
+	 * @param nA the first norm
+	 * @param nB the second norm
 	 */
 	public void addSubstitutability(Norm nA, Norm nB) {
-		super.addRelationship(nA, nB, NetworkEdgeType.Substitutability);
-		super.addRelationship(nB, nA, NetworkEdgeType.Substitutability);
+		if(!this.contains(nA)) {
+			this.add(nA);
+		}
+		if(!this.contains(nB)) {
+			this.add(nB);
+		}
+		super.addRelationship(nA, nB, NetworkEdgeType.SUBSTITUTABILITY);
+		super.addRelationship(nB, nA, NetworkEdgeType.SUBSTITUTABILITY);
+		
+		this.removeComplementarity(nA, nB);
 	}
 	
 	/**
-	 * Sets the state of a norm to active in the normative
-	 * network, and updates the omega function to update
-	 * the normative system
+	 * Removes a substitutability relationship between two norms
 	 * 
-	 * @param norm the norm to activate
-	 * @see OmegaFunction
+	 * @param nA the first norm
+	 * @param nB the second norm
 	 */
-	public void activate(Norm norm) {
-		super.activate(norm);
-		this.omegaFunction.update(norm, this);
+	public void removeSubstitutability(Norm nA, Norm nB) {
+		super.removeRelationship(nA, nB, NetworkEdgeType.SUBSTITUTABILITY);
+		super.removeRelationship(nB, nA, NetworkEdgeType.SUBSTITUTABILITY);
 	}
-
+	
 	/**
-	 * Sets the state of a norm to inactive in the normative
-	 * network, and updates the omega function to update
-	 * the normative system
 	 * 
-	 * @param norm the norm to activate
-	 * @see OmegaFunction
+	 * @param child
+	 * @param parent
 	 */
-	public void deactivate(Norm norm) {
-		super.deactivate(norm);
-		this.omegaFunction.update(norm, this);
-	}
-
-
-	/**
-	 * Returns a {@code List} containing all the brothers of the given
-	 * {@code node} in the network. That is, all those nodes
-	 * that are children of the node's parents
-	 * 
-	 * @param node the node
-	 * @return a {@code List} containing all the brothers of the given
-	 * 				{@code node} in the network. That is, all those nodes
-	 * 				that are children of the node's parents
-	 */
-	public List<Norm> getBrothers(Norm norm) {
-		List<Norm> brothers = new ArrayList<Norm>();
-		List<Norm> parents = this.getParents(norm);
-
-		for(Norm parent : parents) {
-			List<Norm> children = this.getChildren(parent);
-			
-			for(Norm child : children) {
-				if(!child.equals(norm) && !brothers.contains(child)
-						&& this.getGeneralisationLevel(norm) == 
-						this.getGeneralisationLevel(child)) {
-					
-					brothers.add(child);
-				}
-			}
+	public void addComplementarity(Norm nA, Norm nB) {
+		if(!this.contains(nA)) {
+			this.add(nA);
 		}
-		return brothers;
+		if(!this.contains(nB)) {
+			this.add(nB);
+		}
+		super.addRelationship(nA, nB, NetworkEdgeType.COMPLEMENTARITY);
+		super.addRelationship(nB, nA, NetworkEdgeType.COMPLEMENTARITY);
+		
+		this.removeSubstitutability(nA, nB);
+	}
+	
+	/**
+	 * 
+	 * @param child
+	 * @param parent
+	 */
+	public void removeComplementarity(Norm nA, Norm nB) {
+		super.removeRelationship(nA, nB, NetworkEdgeType.COMPLEMENTARITY);
+		super.removeRelationship(nB, nA, NetworkEdgeType.COMPLEMENTARITY);
+	}
+	
+	/**
+	 * Sets the state of a norm to the given state in the normative
+	 * network, and updates the omega function to update
+	 * the normative system
+	 * 
+	 * @param norm the norm to activate
+	 * @see OmegaFunction
+	 */
+	@Override
+	public void setState(Norm norm, NetworkNodeState state) {
+		super.setState(norm, state);
+		this.omegaFunction.update(norm, this);
 	}
 	
 	/**
@@ -243,22 +235,18 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	}
 	
 	/**
-	 * Returns a {@code List} of the norms that are
-	 * active in the normative network
+	 * Returns a {@code List} of the norms that are active in the network
 	 * 
-	 * @return a {@code List} of the norms that are
-	 * 					active in the normative network
+	 * @return a {@code List} of the norms that are active in the network
 	 */
 	public List<Norm> getActiveNorms() {
 		return super.getActiveNodes();
 	}
-	
+
 	/**
-	 * Returns a {@code List} of the norms that are
-	 * inactive in the normative network
+	 * Returns a {@code List} of the norms that are inactive in the network
 	 * 
-	 * @return a {@code List} of the norms that are
-	 * 					inactive in the normative network
+	 * @return a {@code List} of the norms that are inactive in the network
 	 */
 	public List<Norm> getInactiveNorms() {
 		return super.getInactiveNodes();
@@ -273,7 +261,7 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					active norm
 	 */
 	public List<Norm> getRepresentedNorms() {
-		return this.getRepresentedNodes();
+		return super.getRepresentedNodes();
 	}
 	
 	/**
@@ -289,7 +277,31 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	public List<Norm> getNotRepresentedNorms() {
 		return super.getNotRepresentedNodes();
 	}
-
+	
+	/**
+	 * 
+	 * @param norm
+	 * @return
+	 */
+	public List<Norm> getSubstitutableNorms(Norm norm) {
+		List<Norm> ret = new ArrayList<Norm>();
+		
+		/* The node has no parents (no outgoing generalisation relationships) */
+		if(this.graph.getOutEdges(norm) == null) {
+			return ret;
+		}
+		/* Check relationships with other nodes */
+		for(NetworkEdge edge : this.graph.getOutEdges(norm)) {
+			
+			/* If it is a generalisation relationship, retrieve
+			 * its destination (the parent, general node) */ 
+			if(edge.getRelationship() == NetworkEdgeType.SUBSTITUTABILITY) {
+				ret.add(this.graph.getDest(edge));
+			}
+		}
+		return ret;
+	}
+	
 	/**
 	 * Returns a norm in the normative network with the given
 	 * {@code precondition}, {@code modality} and {@code action}
@@ -301,9 +313,9 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @return the norm with the given elements
 	 */
 	public Norm getNorm(SetOfPredicatesWithTerms precondition,
-			NormModality modality, AgentAction action, Goal goal) {
+			NormModality modality, EnvironmentAgentAction action) {
 		
-		Norm n = new Norm(precondition, modality, action, goal);
+		Norm n = new Norm(precondition, modality, action);
 		for(Norm norm : this.getNodes()) {
 			if(n.equals(norm)) {
 				return norm;
@@ -313,6 +325,23 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	}
 
 	/**
+	 * Returns a norm in the normative network with the 
+	 * {@code precondition}, {@code modality} and {@code action}
+	 * of the norm passed by parameter
+	 * 
+	 * @param the norm to retrieve from the normative network
+	 * @return the norm with the given elements
+	 */
+	public Norm getNorm(Norm n) {
+		for(Norm norm : this.getNodes()) {
+			if(n.equals(norm)) {
+				return norm;
+			}
+		}
+		return null;
+	}
+	
+	/**
 	 * Returns the norm with the given {@code id}
 	 * 
 	 * @param id the id of the norm
@@ -321,21 +350,7 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	public Norm getNormWithId(int id)  {
 		return this.ids.get(id);
 	}
-	
-	/**
-	 * Returns the generalisation level of a norm in the network.
-	 * The generalisation level indicates the position (i.e., height) of the
-	 * norm in the network. As an example, while a "leaf" norm in the network
-	 * has level 0, its immediate parent has level 1, and the parent of the
-	 * parent has level 2  
-	 * 
-	 * @param norm the norm
-	 * @return the generalisation level of the norm
-	 */
-	public int getGeneralisationLevel(Norm norm) {
-		return this.genLevels.get(norm);
-	}
-	
+		
 	/**
 	 * Returns the normative system represented by this normative network
 	 * 
@@ -345,7 +360,7 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	public NormativeSystem getNormativeSystem() {
 		return this.omegaFunction.getNormativeSystem();
 	}
-
+	
 	/**
 	 * Returns the list of tags assigned to the {@code norm} received 
 	 * by parameter
@@ -354,8 +369,94 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @return the list of tags assigned to the {@code norm} received 
 	 * 					by parameter
 	 */
-	public List<NormAttribute> getTags(Norm norm) {
+	public List<NormAttribute> getAttributes(Norm norm) {
 		return this.attributes.get(norm);
+	}
+
+	/**
+	 * 
+	 * @param norm
+	 * @param attribute
+	 * @return
+	 */
+	public boolean hasAttribute(Norm norm, NormAttribute attribute) {
+		List<NormAttribute> attributes = this.getAttributes(norm);
+		if(attributes == null) {
+			return false;
+		}
+		return attributes.contains(attribute);
+	}
+	
+	/**
+	 * Returns <tt>true</tt> if the state of the norm is
+	 * active in the network
+	 * 
+	 * @return <tt>true</tt> if the state of the norm is
+	 * 					active in the network
+	 */
+	@Override
+	public NetworkNodeState getState(Norm norm) {
+		if(!this.contains(norm)) {
+			return null;
+		}
+		norm = this.getNorm(norm);
+		return this.states.get(norm);
+	}
+	
+	/**
+	 * Returns a list containing all the relationships of a type
+	 * that the normative network contains 
+	 *  
+	 * @param type the relationship type
+	 * 
+	 * @return a list containing all the relationships of a type
+	 * that the normative network contains
+	 */
+	public List<NetworkEdge> getRelationships(NetworkEdgeType type) {
+		List<NetworkEdge> rels = new ArrayList<NetworkEdge>();
+		for(NetworkEdge edge : this.graph.getEdges()) {
+			if(edge.getRelationship() == type) {
+				rels.add(edge);
+			}
+		}
+		return rels;
+	}
+	
+	
+	/**
+	 * Returns <tt>true</tt> if one of the following conditions hold:
+	 * <ol>
+	 * <li> the given {@code norm} is active in the network; or
+	 * <li>	the given {@code norm} is inactive but some of its ancestors
+	 * 			(the nodes that generalise and represent it) are active in
+	 * 			the network
+	 * </ol>
+	 * 
+	 * @param norm the norm
+	 * @return <tt>true</tt> if the norm is active in the network,
+	 * or it is inactive but some of its ancestors are active in the network
+	 */
+	public boolean isRepresented(Norm norm) {
+		if(!this.contains(norm)) {
+			return false;
+		}
+		norm = this.getNorm(norm);
+//		
+//		if(this.getState(norm) == NetworkNodeState.ACTIVE) {
+//			return true;
+//		}
+//		else {
+//			List<Norm> parents = this.getParents(norm);
+//			
+//			for(Norm parent : parents) {
+//				if(this.isRepresented(parent)) {
+//					return true;
+//				}
+//			}
+//		}
+//		return false;
+		
+		return super.isRepresented(norm);
 	}
 	
 	/**
@@ -365,14 +466,20 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @return
 	 */
 	public boolean isAncestor(Norm ancestor, Norm norm) {
-		List<Norm> parents = this.getParents(norm);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		norm = this.getNorm(norm);
 		
+		List<Norm> parents = this.getParents(norm);
 		for(Norm parent : parents) {
 			if(parent.equals(ancestor)) {
 				return true;
 			}
 			else {
-				return this.isAncestor(ancestor, parent);
+				if(this.isAncestor(ancestor, parent)) {
+					return true;
+				}
 			}
 		}
 		return false;
@@ -387,7 +494,10 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Ineffective</i>
 	 */
 	public boolean isIneffective(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Ineffective);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.INEFFECTIVE);
 	}
 	
 	/**
@@ -399,7 +509,10 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Unnecessary</i>
 	 */
 	public boolean isUnnecessary(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Unnecessary);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.UNNECESSARY);
 	}
 
 	/**
@@ -411,7 +524,10 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Generalisable</i>
 	 */
 	public boolean isGeneralisable(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Generalisable);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.GENERALISABLE);
 	}
 	
 	/**
@@ -423,7 +539,25 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Substitutable</i>
 	 */
 	public boolean isSubstitutable(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Substitutable);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.SUBSTITUTABLE);
+	}
+	
+	/**
+	 * Returns <tt>true</tt> if the given {@code norm} has been assigned
+	 * the tag <i>Substituter</i>
+	 * 
+	 * @param norm the norm to check
+	 * @return <tt>true</tt> if the given {@code norm} has been assigned
+	 * 					the tag <i>Substituter</i>
+	 */
+	public boolean isSubstituter(Norm norm) {
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.SUBSTITUTER);
 	}
 	
 	/**
@@ -435,7 +569,10 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Exclussive</i>
 	 */
 	public boolean isExclussive(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Exclussive);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.EXCLUSSIVE);
 	}
 	
 	/**
@@ -447,7 +584,26 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					the tag <i>Complementary</i>
 	 */
 	public boolean isComplementary(Norm norm) {
-		return this.attributes.get(norm).contains(NormAttribute.Complementary);
+		if(!this.contains(norm)) {
+			return false;
+		}
+		return this.attributes.get(norm).contains(NormAttribute.COMPLEMENTARY);
+	}
+	
+	/**
+	 * Returns <tt>true</tt> if the node is a leaf in the
+	 * network, namely it has generalisation level = 0
+	 * 
+	 * @param node the node
+	 * @return <tt>true</tt> if the node is a leaf in the
+	 * 					network, namely it has generalisation level = 0
+	 */
+	public boolean isLeaf(Norm norm) {
+		if(!this.contains(norm)) {
+			return false;
+		}
+		Norm n = this.getNorm(norm);
+		return this.getChildren(n).size() <= 0;
 	}
 	
 	/**
@@ -460,10 +616,38 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					have a substitutability relationship in this normative network
 	 */
 	public boolean areSubstitutable(Norm n1, Norm n2) {
+		if(!this.contains(n1) || !this.contains(n2)) {
+			return false;
+		}
+		
 		List<NetworkEdge> edges = this.getRelationships(n1, n2);
 		
 		for(NetworkEdge edge : edges) {
-			if(edge.getRelationship() == NetworkEdgeType.Substitutability) {
+			if(edge.getRelationship() == NetworkEdgeType.SUBSTITUTABILITY) {
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Returns <tt>true</tt> if a given pair of norms {@code n1} and {@code n2}
+	 * have a complementarity relationship in this normative network
+	 * 
+	 * @param n1 the first norm
+	 * @param n2 the second norm
+	 * @return <tt>true</tt> if a given pair of norms {@code n1} and {@code n2}
+	 * 					have a complementarity relationship in this normative network
+	 */
+	public boolean areComplementary(Norm n1, Norm n2) {
+		if(!this.contains(n1) || !this.contains(n2)) {
+			return false;
+		}
+		
+		List<NetworkEdge> edges = this.getRelationships(n1, n2);
+		
+		for(NetworkEdge edge : edges) {
+			if(edge.getRelationship() == NetworkEdgeType.COMPLEMENTARITY) {
 				return true;
 			}
 		}
@@ -494,9 +678,9 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * 					and {@code action}
 	 */
 	public boolean contains(SetOfPredicatesWithTerms precondition, 
-			NormModality modality, AgentAction action, Goal goal) {
+			NormModality modality, EnvironmentAgentAction action) {
 		
-		Norm n = new Norm(precondition, modality, action, goal);
+		Norm n = new Norm(precondition, modality, action);
 		for(Norm norm : this.getNodes()) {
 			if(n.equals(norm)) {
 				return true;
@@ -512,7 +696,7 @@ public class NormativeNetwork extends NSMNetwork<Norm> {
 	 * @return <tt>true</tt> if the normative network contains the norm
 	 */
 	public boolean contains(Norm n)	{
-		for(Norm norm : this.getNorms()) {
+		for(Norm norm : this.getNodes()) {
 			if(n.equals(norm)) {
 				return true;
 			}

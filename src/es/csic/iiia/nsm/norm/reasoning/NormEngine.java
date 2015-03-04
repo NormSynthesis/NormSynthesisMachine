@@ -53,10 +53,10 @@ public class NormEngine implements JessListener {
 	//---------------------------------------------------------------------------
 
 	protected PredicatesDomains predDomains	;	// predicates and their domains
-	protected NormativeSystem normativeSystem;	// the current normative system
+	protected NormativeSystem norms;					// the current normative system
 	protected List<Norm> applicableNorms;			// norms applicable to the facts
-	protected JessFactsGenerator factFactory; 	// to create facts for Jess
-	protected Rete ruleEngine;									// the Jess rule engine
+	protected JessFactsGenerator factFactory; // to create facts for Jess
+	protected Rete ruleEngine;								// the Jess rule engine
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -72,7 +72,7 @@ public class NormEngine implements JessListener {
 		this.factFactory = new JessFactsGenerator(predDomains);
 		
 		this.ruleEngine = new Rete();
-		this.normativeSystem = new NormativeSystem();
+		this.norms = new NormativeSystem();
 		this.applicableNorms = new ArrayList<Norm>();
 		
 		/* Add this reasoner ass a listener of the rule engine */
@@ -106,8 +106,6 @@ public class NormEngine implements JessListener {
 	 * @param agContext the world fact that describes the context of an agent
 	 */
 	public String addFacts(SetOfPredicatesWithTerms agContext)  {
-		if(agContext == null)
-			System.out.println();
 		String facts = this.factFactory.generateFacts(agContext,
 				JessFactType.WorldFact);
 		
@@ -147,23 +145,26 @@ public class NormEngine implements JessListener {
 	 * @param norm the norm to add
 	 */
 	public void addNorm(Norm norm) {
-		SetOfPredicatesWithTerms precondition = norm.getPrecondition();
-		
-		/* Translate the norm's precondition to the format of the 
-		 * Jess rules precondition */
-		String facts = this.factFactory.generateFacts(precondition, 
-				JessFactType.RulePrecondition);
-
-		/* Generate Jess rule */
-		String jessRule = "(defrule " + norm.getName() + " \"N\" "+ facts + "=> )";
-
-		try {
-			ruleEngine.eval(jessRule);
-			normativeSystem.add(norm);
+		if(!this.contains(norm)) 
+		{
+			SetOfPredicatesWithTerms precondition = norm.getPrecondition();
+			
+			/* Translate the norm's precondition to the format of the 
+			 * Jess rules precondition */
+			String facts = this.factFactory.generateFacts(precondition, 
+					JessFactType.RulePrecondition);
+	
+			/* Generate Jess rule */
+			String jessRule = "(defrule " + norm.getName() + " \"N\" "+ facts + "=> )";
+	
+			try {
+				ruleEngine.eval(jessRule);
+				norms.add(norm);
+			}
+			catch (JessException e) {
+				e.printStackTrace();
+			}
 		}
-		catch (JessException e) {
-			e.printStackTrace();
-		}	
 	}
 
 	/**
@@ -173,7 +174,7 @@ public class NormEngine implements JessListener {
 	 */
 	public void removeNorm(Norm norm) {
 		try {
-			normativeSystem.remove(norm);
+			norms.remove(norm);
 			ruleEngine.unDefrule(norm.getName());
 		}
 		catch (JessException e) {
@@ -181,6 +182,22 @@ public class NormEngine implements JessListener {
 		}
 	}
 
+	/**
+	 * 
+	 * @return
+	 */
+	public List<Norm> getNorms() {
+		return this.norms;
+	}
+	
+	/**
+	 * 
+	 * @return
+	 */
+	public boolean contains(Norm norm) {
+		return this.norms.contains(norm);
+	}
+	
 	//--------------------------------------------------------------------------------
 	// Rules
 	//--------------------------------------------------------------------------------
@@ -220,7 +237,7 @@ public class NormEngine implements JessListener {
 		}
 
 		/* Activate the norm associated to this rule */
-		this.applicableNorms.add(normativeSystem.getNormWithId(normId));
+		this.applicableNorms.add(norms.getNormWithId(normId));
 	}
 
 	/**

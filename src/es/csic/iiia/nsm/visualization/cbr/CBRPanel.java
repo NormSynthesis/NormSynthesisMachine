@@ -1,7 +1,6 @@
 package es.csic.iiia.nsm.visualization.cbr;
 
 import javax.swing.BorderFactory;
-import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;

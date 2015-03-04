@@ -11,9 +11,9 @@ import org.jfree.ui.ApplicationFrame;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.config.Dimension;
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.net.norm.NetworkNode;
 import es.csic.iiia.nsm.norm.Norm;
+import es.csic.iiia.nsm.norm.evaluation.PerformanceRange;
 import es.csic.iiia.nsm.norm.group.NormGroup;
 
 /**
@@ -51,20 +51,19 @@ public class PerformanceRangeChartFrame extends ApplicationFrame {
 	 * @param goal the goal from which to show the utility
 	 * @param node the node from which to show the utility
 	 */
-	public PerformanceRangeChartFrame(NormSynthesisMachine nsm, Goal goal,
-			NetworkNode node) {
+	public PerformanceRangeChartFrame(NormSynthesisMachine nsm, NetworkNode node) {
 		
-		super("Norm scores for goal " + goal);
+		super("Norm scores for goal GCols");
 		this.charts = new ArrayList<PerformanceRangeChart>();
 
 		if(node instanceof Norm) {
 			for(Dimension dim : nsm.getNormEvaluationDimensions()) {
-				this.charts.add(new PerformanceRangeChart(nsm, dim, goal, node));
+				this.charts.add(new PerformanceRangeChart(nsm, dim, node));
 			}	
 		}
 		else if (node instanceof NormGroup) {
 			this.charts.add(new PerformanceRangeChart(
-					nsm, Dimension.Effectiveness, goal, node));
+					nsm, Dimension.Effectiveness, node));
 		}
 		
 		this.initComponents();

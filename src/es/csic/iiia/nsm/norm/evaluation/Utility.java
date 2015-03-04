@@ -74,21 +74,27 @@ public class Utility {
 	 */
 	public void reset() {
 		for(Dimension dim : dimensions) {
-			HashMap<Goal, Float> dimScores = new HashMap<Goal, Float>();
-			HashMap<Goal, PerformanceRange> dimPerformances =
-					new HashMap<Goal, PerformanceRange>();
+			this.resetDimension(dim);
+		}
+	}
 
-			this.scores.put(dim, dimScores);
-			this.perfRanges.put(dim, dimPerformances);
+	/**
+	 * 
+	 * @param dim
+	 */
+	public void resetDimension(Dimension dim) {
+		HashMap<Goal, Float> dimScores = new HashMap<Goal, Float>();
+		HashMap<Goal, PerformanceRange> dimPerformances =
+				new HashMap<Goal, PerformanceRange>();
 
-			for(Goal goal : goals) {
-				PerformanceRange perfRange = 
-						new PerformanceRange(perfRangeSize);
-				perfRange.addValue(defaultUtility);
+		this.scores.put(dim, dimScores);
+		this.perfRanges.put(dim, dimPerformances);
 
-				this.scores.get(dim).put(goal, defaultUtility);
-				this.perfRanges.get(dim).put(goal, perfRange);
-			}
+		for(Goal goal : goals) {
+			PerformanceRange perfRange = new PerformanceRange(perfRangeSize);
+			this.perfRanges.get(dim).put(goal, perfRange);
+
+			this.setScore(dim, goal, defaultUtility);
 		}
 	}
 
@@ -129,10 +135,10 @@ public class Utility {
 	 * 					the period of time given by the method
 	 * 					{@code NormSynthesisSettings.getNormsPerformanceRangesSize()}
 	 */
-	public float getScoreAverage(Dimension dim, Goal goal) {
+	public double getScoreAverage(Dimension dim, Goal goal) {
 		return this.perfRanges.get(dim).get(goal).getCurrentAverage();
 	}
-	
+
 	/**
 	 * Returns the score window used to compute the performance
 	 * range of the norm during a period of time, in terms of a 

@@ -1,11 +1,6 @@
 package es.csic.iiia.nsm.strategy;
 
-import java.util.List;
-import java.util.Map;
-
-import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.norm.NormativeSystem;
-import es.csic.iiia.nsm.norm.generation.Conflict;
 
 /**
  * A norm synthesis strategy, which performs the norm synthesis cycle
@@ -13,7 +8,22 @@ import es.csic.iiia.nsm.norm.generation.Conflict;
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  */
 public interface NormSynthesisStrategy {
-		
+	
+	/**
+	 * 
+	 * @author "Javier Morales (jmorales@iiia.csic.es)"
+	 *
+	 */
+	public enum Option {
+		IRON, SIMON, SIMONPlus, LION; 
+	}
+//	
+//	/**
+//	 * 
+//	 * @param defaultNorms
+//	 */
+//	public void addDefaultNormativeSystem(List<Norm> defaultNorms);
+	
 	/**
 	 * Executes the strategy, performing the norm synthesis cycle
 	 * 
@@ -22,12 +32,4 @@ public interface NormSynthesisStrategy {
 	 */
 	public NormativeSystem execute();
 	
-	/**
-	 * Returns a map that saves the conflicts that the strategy has detected
-	 * with respect to each goal during the current tick 
-	 * 
-	 * @return 	a map that saves the conflicts that the strategy has detected
-	 * 					with respect to each goal during the current tick
-	 */
-	public Map<Goal, List<Conflict>> getNonRegulatedConflictsThisTick();
 }
