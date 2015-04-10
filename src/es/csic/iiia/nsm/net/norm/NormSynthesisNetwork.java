@@ -44,7 +44,7 @@ public class NormSynthesisNetwork<T> {
 	protected Map<T, NetworkNodeState> states;			// state of each node
 	protected Map<T, Utility> utilities;						// utilities of each node
 	
-	private float normsDefaultUtility;
+	protected float normsDefaultUtility;
 	
 	//---------------------------------------------------------------------------
 	// Methods

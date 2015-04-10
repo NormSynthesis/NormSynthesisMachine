@@ -96,6 +96,9 @@ public class NormReasoner extends NormEngine {
 			EnvironmentAgentContext aContext = this.dmFunctions.
 					agentContextFunction(agentId, pView);
 			
+			if(aContext == null) {
+				continue;
+			}
 			NormsApplicableToAgentContext nAppToPred =
 					this.getNormsApplicable(
 							aContext.getDescription());

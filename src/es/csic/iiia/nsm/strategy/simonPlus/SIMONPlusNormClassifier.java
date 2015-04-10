@@ -233,9 +233,9 @@ public class SIMONPlusNormClassifier {
 		int numValues = utility.getPerformanceRange(dim, goal).getNumPunctualValues();
 		int minNumEvalsToClassify = this.nsmSettings.getMinEvaluationsToClassifyNorms();
 		
-		if(this.isNormGenReactiveToConflicts) {
-			minNumEvalsToClassify = 0;
-		}
+//		if(this.isNormGenReactiveToConflicts && dim != Dimension.Effectiveness) {
+//			minNumEvalsToClassify = 0;
+//		}
 
 		/* The norm under performs */
 		if(numValues > minNumEvalsToClassify) {

@@ -15,7 +15,6 @@ import es.csic.iiia.nsm.norm.generation.Conflict;
 import es.csic.iiia.nsm.norm.generation.NormGenerationMachine;
 import es.csic.iiia.nsm.norm.generation.cbr.CBRNormGenerationMachine;
 import es.csic.iiia.nsm.norm.reasoning.NormReasoner;
-import es.csic.iiia.nsm.norm.refinement.lion.NormAttribute;
 
 /**
  * The operators that the SIMON strategy uses to perform norm synthesis
