@@ -27,7 +27,7 @@ public class SIMONUtilityFunction  {
 	//---------------------------------------------------------------------------
 
 	private Map<Norm, List<SetOfPredicatesWithTerms>> negRewardedNorms;
-	private NormSynthesisMetrics nsMetrics;
+//	private NormSynthesisMetrics nsMetrics;
 	
 	//---------------------------------------------------------------------------
 	// Methods 
@@ -38,7 +38,7 @@ public class SIMONUtilityFunction  {
 	 */
 	public SIMONUtilityFunction(NormSynthesisMetrics nsMetrics) {
 		this.negRewardedNorms = new HashMap<Norm, List<SetOfPredicatesWithTerms>>();
-		this.nsMetrics = nsMetrics;
+//		this.nsMetrics = nsMetrics;
 	}
 
 	/**

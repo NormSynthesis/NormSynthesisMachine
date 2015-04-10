@@ -28,7 +28,7 @@ public class SIMONNormClassifier {
 	protected List<Dimension> normEvDimensions;
 	private NormSynthesisSettings nsmSettings;
 	private NormativeNetwork normativeNetwork;
-	private NormSynthesisMetrics nsMetrics;
+//	private NormSynthesisMetrics nsMetrics;
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -41,7 +41,7 @@ public class SIMONNormClassifier {
 		this.normEvDimensions = normEvDimensions;
 		this.nsmSettings = nsmSettings;
 		this.normativeNetwork = normativeNetwork;
-		this.nsMetrics = nsMetrics;
+//		this.nsMetrics = nsMetrics;
 	}
 
 	/**
