@@ -8,7 +8,6 @@ import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
-import es.csic.iiia.nsm.config.NormSynthesisSettings;
 import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
@@ -37,14 +36,12 @@ public class LIONOperators {
 	protected NormReasoner normReasoner;					// norm reasoner
 	protected DomainFunctions dmFunctions;				// domain functions
 	protected PredicatesDomains predDomains;			// predicates and their domains
-	protected LIONStrategy strategy;							// the norm synthesis strategy
+	protected LIONStrategy strategy;						// the norm synthesis strategy
 	protected NormativeNetwork normativeNetwork;	// the normative network
 	protected NormGroupNetwork normGroupNetwork;	// the norm groups network
 	protected NormGenerationMachine genMachine;		// the norm generation machine
-	protected NormSynthesisSettings nsmSettings;	// norm synthesis settings
-	protected NormSynthesisMetrics nsMetrics;			// norm synthesis metrics
-	protected boolean isNormGenReactiveToConflicts;
-	
+	protected NormSynthesisMetrics nsMetrics;
+
 	//---------------------------------------------------------------------------
 	// Methods
 	//---------------------------------------------------------------------------
@@ -66,13 +63,10 @@ public class LIONOperators {
 		this.predDomains = nsm.getPredicatesDomains();
 		this.normativeNetwork = nsm.getNormativeNetwork();
 		this.normGroupNetwork = nsm.getNormGroupNetwork();
-		this.nsmSettings = nsm.getNormSynthesisSettings();
 		this.nsMetrics = nsm.getNormSynthesisMetrics();
+
 		this.genMachine = new CBRNormGenerationMachine(this.normativeNetwork,
-				normReasoner, strategy, nsm.getRandom(), this.nsMetrics);
-		
-		this.isNormGenReactiveToConflicts = 
-				nsmSettings.isNormGenerationReactiveToConflicts();
+				normReasoner,strategy,nsm.getRandom());
 	}
 
 	/**
@@ -101,13 +95,10 @@ public class LIONOperators {
 				normsToAdd.add(norm);
 			}
 
-			/* ONLY IF norm generation is reactive to conflicts:
-			 * If the normative network contains the norm, but it is not represented
+			/* If the normative network contains the norm, but it is not represented
 			 * (that is, the norm and all its ancestors are inactive),
 			 * then activate the norm */
-			else if(isNormGenReactiveToConflicts && 
-					!normativeNetwork.isRepresented(norm)) {
-
+			else if(!normativeNetwork.isRepresented(norm)) {
 				boolean isIneffective = this.normativeNetwork.getAttributes(norm).
 						contains(NormAttribute.INEFFECTIVE);
 				boolean isUnnecessary = this.normativeNetwork.getAttributes(norm).
@@ -116,21 +107,28 @@ public class LIONOperators {
 				if(!isIneffective && !isUnnecessary) {
 					normsToActivate.add(norm);
 				}
+
+				/* TODO: Aqui se podria hacer que cuando se reactiva una norma A 
+				 * substituible con B, pero que se reactiva ahora en un contexto en
+				 * que se generaria A o C, pues marcar que A es complementaria con C 
+				 * Asi quedaria como que A es substituible con B y complementaria con C,
+				 * entonces la que habria que desactivar es la B. 
+				 */
 			}
 		}
 
 		/* Add norms to add */
 		for(Norm norm : normsToAdd)	{
 			this.add(norm);
-			this.normativeNetwork.setState(norm, NetworkNodeState.CREATED);
+			this.activate(norm);
 		}
 
 		/* Activate norms */
 		for(Norm norm : normsToActivate)	{
 			this.activate(norm);
+			this.normativeNetwork.getUtility(norm).reset();
 		}
 		return normsToActivate;
-
 	}
 
 	/**
@@ -148,15 +146,13 @@ public class LIONOperators {
 
 			/* The new norm has been added because it is
 			 * regarded as effective and necessary */
-			//			this.normativeNetwork.addAttribute(norm, NormAttribute.EFFECTIVE);
-			//			this.normativeNetwork.addAttribute(norm, NormAttribute.NECESSARY);
+			this.normativeNetwork.addAttribute(norm, NormAttribute.EFFECTIVE);
+			this.normativeNetwork.addAttribute(norm, NormAttribute.NECESSARY);
 
 			/* Activate the norm and link it to other norms in the network */
-			if(this.isNormGenReactiveToConflicts) {
-				this.activate(norm);
-			}
+			this.activate(norm);
 			this.link(norm);
-			
+
 			/* Update complexities metrics */
 			this.nsMetrics.incNumNodesSynthesised();
 			this.nsMetrics.incNumNodesInMemory();
@@ -174,6 +170,7 @@ public class LIONOperators {
 	public void activate(Norm norm) {
 		if(!normativeNetwork.isRepresented(norm)) {
 			normativeNetwork.setState(norm, NetworkNodeState.ACTIVE);
+			normativeNetwork.removeAttribute(norm, NormAttribute.GENERALISABLE);
 
 			if(this.normGroupNetwork.hasNormGroupCombinations(norm)) {
 				Map<Norm,NormGroupCombination> nGrCombs = 
@@ -188,13 +185,7 @@ public class LIONOperators {
 					for(NormGroup nGroup : nGrCombs.get(n).getAllNormGroups()) {
 						Utility u = this.normGroupNetwork.getUtility(nGroup);
 						u.reset();
-						
-						/* Update complexities metrics */
-						this.nsMetrics.incNumNodesVisited();
 					}
-					
-					/* Update complexities metrics */
-					this.nsMetrics.incNumNodesVisited();
 				}	
 			}
 		}
@@ -210,26 +201,17 @@ public class LIONOperators {
 	public void deactivate(Norm norm, NetworkNodeState newState) {
 		this.normativeNetwork.setState(norm, newState);
 
-		if(newState != NetworkNodeState.GENERALISED) {
-//			/* Reset the norm's effectiveness and necessity (and also its classifications 
-//			 * in terms of effectiveness and necessity) */
-//			this.normativeNetwork.getUtility(norm).reset();
-//			this.normativeNetwork.removeAttribute(norm, NormAttribute.EFFECTIVE);
-//			this.normativeNetwork.removeAttribute(norm, NormAttribute.INEFFECTIVE);
-//			this.normativeNetwork.removeAttribute(norm, NormAttribute.NECESSARY);
-//			this.normativeNetwork.removeAttribute(norm, NormAttribute.UNNECESSARY);
+		if(newState == NetworkNodeState.REPRESENTED) {
+			return;
+		}
 
-			if(this.normGroupNetwork.hasNormGroupCombinations(norm)) {
-				Map<Norm,NormGroupCombination> nGrCombs = 
-						this.normGroupNetwork.getNormGroupCombinations(norm);
+		if(this.normGroupNetwork.hasNormGroupCombinations(norm)) {
+			Map<Norm,NormGroupCombination> nGrCombs = 
+					this.normGroupNetwork.getNormGroupCombinations(norm);
 
-				for(Norm n : nGrCombs.keySet()) {
-					this.normGroupNetwork.setState(nGrCombs.get(n), NetworkNodeState.INACTIVE);	
-					
-					/* Update complexities metrics */
-					this.nsMetrics.incNumNodesVisited();
-				}	
-			}
+			for(Norm n : nGrCombs.keySet()) {
+				this.normGroupNetwork.setState(nGrCombs.get(n), NetworkNodeState.INACTIVE);	
+			}	
 		}
 	}
 
@@ -246,10 +228,10 @@ public class LIONOperators {
 		 * an ancestor (the parent norm, likely) */
 		for(Norm p : this.normativeNetwork.getParents(child)) {
 			if(this.normativeNetwork.isRepresented(p)) {
-				this.deactivate(child, NetworkNodeState.GENERALISED); 
+				this.deactivate(child, NetworkNodeState.REPRESENTED); 
 				break;
 			}
-			
+
 			/* Update complexities metrics */
 			this.nsMetrics.incNumNodesVisited();
 		}
@@ -263,7 +245,7 @@ public class LIONOperators {
 	 */
 	public void specialise(Norm norm, NetworkNodeState specState, List<Norm> children) {
 
-		/* Deactivation of a general norm */
+		/* Deactivation of a general norm TODO: Cambiado */
 		if(children.size() > 0) {
 			this.deactivate(norm, NetworkNodeState.SPECIALISED);	
 		}
@@ -276,7 +258,7 @@ public class LIONOperators {
 			if(!normativeNetwork.isRepresented(child)) {
 				this.activate(child);
 			}
-			
+
 			/* Update complexities metrics */
 			this.nsMetrics.incNumNodesVisited();
 		}
@@ -286,7 +268,7 @@ public class LIONOperators {
 	 * 
 	 * @param norm
 	 */
-	public void link(Norm norm) {
+	private void link(Norm norm) {
 		List<Norm> topBoundary =
 				(List<Norm>)this.normativeNetwork.getTopBoundary();
 		List<Norm> visitedNorms = new ArrayList<Norm>();
@@ -316,8 +298,9 @@ public class LIONOperators {
 		List<Norm> normBChildrenNotSatisfyingA = 
 				this.normReasoner.getNormsNotSatisfying(normBChildren, normA);
 
+
 		/* Para evitar generalizaciones a una misma norma */
-		if(normA.equals(normB) /* || visitedNorms.contains(normB)*/) {
+		if(normA.equals(normB)) {
 			return;
 		}
 
@@ -335,7 +318,7 @@ public class LIONOperators {
 				if(normAChildren.contains(normBChild)) {
 					this.normativeNetwork.removeGeneralisation(normBChild, normA);
 				}
-				
+
 				/* Update complexities metrics */
 				this.nsMetrics.incNumNodesVisited();
 			}
@@ -385,7 +368,7 @@ public class LIONOperators {
 				this.searchRelationships(normA, normBChild, visitedNorms);
 			}
 		}
-		
+
 		/* Update complexities metrics */
 		this.nsMetrics.incNumNodesVisited();
 	}

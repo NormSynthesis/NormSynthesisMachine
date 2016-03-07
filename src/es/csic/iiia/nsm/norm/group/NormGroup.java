@@ -297,45 +297,23 @@ implements Comparable<NormGroup>, NetworkNode {
 	 * @return
 	 */
 	public String toStringDetailed() {
-		String s = "Norm Group " + this.getName();
-		//		s += "\n--------------" + (this.isActive()? "---------" : "----------");
-		//		s += "\nScore : " + this.avgScore;
-		//		s += "\nNum total activations: " + this.numActivations + "\n\n";
-		//
-		//		s += "------------------\n";
-		//		s += "Norms of the group\n";
-		//		s += "------------------\n\n";
-		//
-		//		// Add norm information
-		//		for(Norm norm : this.normDecisionList.getNorms()) {
-		//			s += norm + " (" + norm.toString() + ") \n";
-		//		}
-		//
-		//		s += "\n-------------";
-		//		s += "\nParent Groups";
-		//		s += "\n-------------";
-		//		
-		//		// 
-		//		for(Evaluable ngr : this.parentGroups) {
-		//			s += "\n" + ngr.getName();
-		//		}
-		//		
-		//		s += "\n\n------------";
-		//		s += "\nChild Groups";
-		//		s += "\n------------";
-		//		
-		//		// 
-		//		for(Evaluable ngr : this.childGroups) {
-		//			s += "\n" + ngr.getName();
-		//		}
-		//		
+		String s = "Norm Group " + this.getName() + "\n\n";
+
+		s += "------------------\n";
+		s += "Norms of the group\n";
+		s += "------------------\n\n";
+
+		// Add norm information
+		for(Norm norm : this.allNorms) {
+			s += norm.toString() + ") \n";
+		}
 		return s;
 	}
 
 	//---------------------------------------------------------------------------
 	// Static methods
 	//---------------------------------------------------------------------------
-	
+
 	/**
 	 * Returns a string that describes a norm group composed by a
 	 * {@code List} of fulfilled norms, and a {@code List} of infringed norms

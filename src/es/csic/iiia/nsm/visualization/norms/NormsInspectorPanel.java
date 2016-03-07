@@ -64,7 +64,6 @@ public class NormsInspectorPanel extends javax.swing.JPanel {
 				getCodeSource().getLocation().getPath());
 		String path = f.getPath();
 		miscPath = path.substring(0,path.length()-3) + "misc/";
-
 		
 		initComponents();
 
@@ -81,14 +80,7 @@ public class NormsInspectorPanel extends javax.swing.JPanel {
 		String generalisationMode = "---";
 		String generalisationStep = "---";
 
-
-		if(strategy.equals("DON-SIMON") || strategy.equals("LION")) {
-			boolean nGenReactive = nsmSettings.isNormGenerationReactiveToConflicts();
-			generationMode = nGenReactive ? "Reactive" : "Deliberative";
-		}
-
-		if(strategy.equals("SIMON") || strategy.equals("DON-SIMON") ||
-				strategy.equals("LION")) {
+		if(strategy.equals("SIMON") || strategy.equals("LION")) {
 			generalisationMode = nsmSettings.getNormGeneralisationMode().toString();
 			generalisationStep = String.valueOf(nsmSettings.getNormGeneralisationStep());
 		}
@@ -138,6 +130,7 @@ public class NormsInspectorPanel extends javax.swing.JPanel {
 
 			if(src instanceof Norm) {
 				this.selectedNorm = (Norm)src;
+				this.updateSelectedNorm();
 			}
 		}
 	}
@@ -371,10 +364,8 @@ public class NormsInspectorPanel extends javax.swing.JPanel {
 	 * 
 	 */
 	private void setSelectedNormGroupDescription() {
-		String s = "";
 		NormGroup n = this.selectedNormGroup;
-
-		this.jTextAreaInspectedNormGroup.setText(s);
+		this.jTextAreaInspectedNormGroup.setText(n.toStringDetailed());
 	}
 
 

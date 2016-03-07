@@ -30,12 +30,7 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	// Attributes 
 	//---------------------------------------------------------------------------
 	
-	private Map<T,Integer> genLevels;								// generalisation levels
-
-	private List<T> activeNodes;
-	private List<T> inactiveNodes;
-	private List<T> representedNodes;
-	private List<T> notRepresentedNodes;
+	protected Map<T, Integer> genLevels;								// generalisation levels
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -47,10 +42,6 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	public GeneralisationNetwork(NormSynthesisMachine nsm) {
 		super(nsm);
 		this.genLevels = new HashMap<T, Integer>();
-		this.activeNodes = new ArrayList<T>();
-		this.inactiveNodes = new ArrayList<T>();
-		this.representedNodes = new ArrayList<T>();
-		this.notRepresentedNodes = new ArrayList<T>();
 	}
 
 	/**
@@ -59,8 +50,7 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 * @param node the node to add
 	 */
 	public void add(T node) {
-		
-		/* Set the generalisation level of the node and add it to the network */
+		/* Set the generalisation level of the node */
 		this.genLevels.put(node, 1); 
 		super.add(node);
 	}
@@ -75,13 +65,13 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 		super.addRelationship(child, parent, NetworkEdgeType.GENERALISATION);
 		
 		/* Set the level of the parent node */
+//		int gLevel = this.genLevels.get(child);
+//		this.genLevels.put(parent, gLevel+1);	
+		
+		// TODO: REPASAR ESTO... he comentado las dos lineas de arriba por los problemas que daba con Iosu.
 		int childGenLevel = this.genLevels.get(child);
 		int parentGenLevel = this.genLevels.get(parent);
-		this.genLevels.put(parent, Math.max((childGenLevel+1), parentGenLevel));
-		
-		/* Recompute control lists in case the set of 
-		 * active/inactive/represented norms have changed */
-		this.recomputeControlLists(child);
+		this.genLevels.put(parent, Math.max((childGenLevel+1), parentGenLevel));	
 	}
 	
 	/**
@@ -91,17 +81,6 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 */
 	public void removeGeneralisation(T child, T parent) {
 		super.removeRelationship(child, parent, NetworkEdgeType.GENERALISATION);
-	}
-	
-	/**
-	 * 
-	 */
-	public void setState(T node, NetworkNodeState state) {
-		super.setState(node, state);
-		
-		/* Recompute control lists in case the set of 
-		 * active/inactive/represented norms have changed */
-		this.recomputeControlLists(node);
 	}
 
 	/**
@@ -246,16 +225,15 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 * @return a {@code List} of the norms that are active in the network
 	 */
 	public List<T> getActiveNodes() {
-//		List<T> ret = new ArrayList<T>();
-//		
-//		/* Add the node if it is active */
-//		for(T node : this.getNodes()) {
-//			if(this.getState(node) == NetworkNodeState.ACTIVE) {
-//				ret.add(node);
-//			}
-//		}		
-//		return ret;
-		return this.activeNodes;
+		List<T> ret = new ArrayList<T>();
+		
+		/* Add the node if it is active */
+		for(T node : this.getNodes()) {
+			if(this.getState(node) == NetworkNodeState.ACTIVE) {
+				ret.add(node);
+			}
+		}		
+		return ret;
 	}
 
 	/**
@@ -264,16 +242,15 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 * @return a {@code List} of the norms that are inactive in the network
 	 */
 	public List<T> getInactiveNodes() {
-//		List<T> ret = new ArrayList<T>();
-//		
-//		/* Add the node if it is active */
-//		for(T node : this.getNodes()) {
-//			if(this.getState(node) != NetworkNodeState.ACTIVE) {
-//				ret.add(node);
-//			}
-//		}		
-//		return ret;
-		return this.inactiveNodes;
+		List<T> ret = new ArrayList<T>();
+		
+		/* Add the node if it is active */
+		for(T node : this.getNodes()) {
+			if(this.getState(node) != NetworkNodeState.ACTIVE) {
+				ret.add(node);
+			}
+		}		
+		return ret;
 	}
 	
 	/**
@@ -285,16 +262,15 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 * 					active norm
 	 */
 	public List<T> getRepresentedNodes() {
-//		List<T> ret = new ArrayList<T>();
-//		
-//		/* Add the node if it is represented by some active ancestor node */
-//		for(T node : this.getNodes()) {
-//			if(this.isRepresented(node)) {
-//				ret.add(node);
-//			}
-//		}		
-//		return ret;
-		return this.representedNodes;
+		List<T> ret = new ArrayList<T>();
+		
+		/* Add the node if it is represented by some active ancestor node */
+		for(T node : this.getNodes()) {
+			if(this.isRepresented(node)) {
+				ret.add(node);
+			}
+		}		
+		return ret;
 	}
 	
 	/**
@@ -308,16 +284,15 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 *					inactive as well
 	 */
 	public List<T> getNotRepresentedNodes() {
-//		List<T> ret = new ArrayList<T>();
-//
-//		/* Add the node if it is not represented by any active ancestor node */
-//		for(T node : this.getNodes()) {
-//			if(!this.isRepresented(node)) {
-//				ret.add(node);
-//			}
-//		}		
-//		return ret;
-		return this.notRepresentedNodes;
+		List<T> ret = new ArrayList<T>();
+
+		/* Add the node if it is not represented by any active ancestor node */
+		for(T node : this.getNodes()) {
+			if(!this.isRepresented(node)) {
+				ret.add(node);
+			}
+		}		
+		return ret;
 	}
 	
 	/**
@@ -375,10 +350,6 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 			}
 		}
 		return false;
-//		NetworkNodeState state = this.getState(node);
-//		
-//		return state == NetworkNodeState.ACTIVE || 
-//				state == NetworkNodeState.GENERALISED;
 	}
 	
 	/**
@@ -410,38 +381,5 @@ public class GeneralisationNetwork<T> extends NormSynthesisNetwork<T>{
 	 */
 	public boolean isLeaf(T node) {
 		return this.getChildren(node).size() <= 0;
-	}
-	
-	/**
-	 * 
-	 */
-	private void recomputeControlLists(T node) {
-		NetworkNodeState state = this.getState(node);
-		
-		if(state == NetworkNodeState.ACTIVE) {
-			if(!this.activeNodes.contains(node)) {
-				this.activeNodes.add(node);	
-			}
-			this.inactiveNodes.remove(node);
-		}
-		else {
-			if(!this.inactiveNodes.contains(node)) {
-				this.inactiveNodes.add(node);	
-			}
-			this.activeNodes.remove(node);
-		}
-		
-		if(this.isRepresented(node)) {
-			if(!this.representedNodes.contains(node)) {
-				this.representedNodes.add(node);	
-			}
-			this.notRepresentedNodes.remove(node);
-		}
-		else {
-			if(!this.notRepresentedNodes.contains(node)) {
-				this.notRepresentedNodes.add(node);	
-			}
-			this.representedNodes.remove(node);
-		}
 	}
 }

@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
@@ -44,15 +44,15 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	// Static attributes
 	//---------------------------------------------------------------------------
 	
-	private int NORM_COUNT = 0;	// number of norms in the network
+	private static int NORM_COUNT = 0;			// number of norms in the network
 
 	//---------------------------------------------------------------------------
 	// Attributes
 	//---------------------------------------------------------------------------
 
 	private OmegaFunction omegaFunction;								// the omega function
+//	private Map<Integer, Norm> ids;											// nodes identifiers	
 	private Map<Norm, List<NormAttribute>> attributes; 	// norm attributes
-	private Map<Integer,Norm> ids;											// indexed norms
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -62,10 +62,10 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * @param nsm
 	 */
 	public NormativeNetwork(NormSynthesisMachine nsm) {
-		super(nsm);
+		super(nsm);		
 		
+//		this.ids = new HashMap<Integer, Norm>();
 		this.attributes = new HashMap<Norm, List<NormAttribute>>();
-		this.ids = new HashMap<Integer,Norm>();
 	}
 
 	/**
@@ -78,13 +78,12 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	@Override
 	public void add(Norm norm) {
 		if(!this.contains(norm)) {
-			if(norm.getId() == 0) {
-				norm.setId(++NORM_COUNT);	
-			}			
+			norm.setId(++NORM_COUNT);
 			super.add(norm);
 
+			/* Index norm for fast access */
+//			this.ids.put(norm.getId(), norm);
 			this.attributes.put(norm, new ArrayList<NormAttribute>());
-			this.ids.put(norm.getId(), norm);
 		}
 	}
 	
@@ -94,9 +93,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * @param tag
 	 */
 	public void addAttribute(Norm norm, NormAttribute attribute) {
-		if(!this.contains(norm)) {
-			this.add(norm);
-		}
 		if(!this.attributes.containsKey(norm)) {
 			this.attributes.put(norm, new ArrayList<NormAttribute>());
 		}
@@ -117,6 +113,17 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 		}
 	}
 
+//	/**
+//	 * 
+//	 * @param norm
+//	 * @param attributes
+//	 */
+//	public void addAttributes(Map<Norm,List<NormAttribute>> attributes) {
+//		for(Norm norm : attributes.keySet()) {
+//			this.addAttributes(norm, attributes.get(norm));
+//		}
+//	}
+//	
 	/**
 	 * 
 	 * @param norm
@@ -154,18 +161,11 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	}
 
 	/**
-	 * Adds a substitutability relationship between two norms
 	 * 
-	 * @param nA the first norm
-	 * @param nB the second norm
+	 * @param child
+	 * @param parent
 	 */
 	public void addSubstitutability(Norm nA, Norm nB) {
-		if(!this.contains(nA)) {
-			this.add(nA);
-		}
-		if(!this.contains(nB)) {
-			this.add(nB);
-		}
 		super.addRelationship(nA, nB, NetworkEdgeType.SUBSTITUTABILITY);
 		super.addRelationship(nB, nA, NetworkEdgeType.SUBSTITUTABILITY);
 		
@@ -173,10 +173,9 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	}
 	
 	/**
-	 * Removes a substitutability relationship between two norms
 	 * 
-	 * @param nA the first norm
-	 * @param nB the second norm
+	 * @param child
+	 * @param parent
 	 */
 	public void removeSubstitutability(Norm nA, Norm nB) {
 		super.removeRelationship(nA, nB, NetworkEdgeType.SUBSTITUTABILITY);
@@ -189,12 +188,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * @param parent
 	 */
 	public void addComplementarity(Norm nA, Norm nB) {
-		if(!this.contains(nA)) {
-			this.add(nA);
-		}
-		if(!this.contains(nB)) {
-			this.add(nB);
-		}
 		super.addRelationship(nA, nB, NetworkEdgeType.COMPLEMENTARITY);
 		super.addRelationship(nB, nA, NetworkEdgeType.COMPLEMENTARITY);
 		
@@ -210,7 +203,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 		super.removeRelationship(nA, nB, NetworkEdgeType.COMPLEMENTARITY);
 		super.removeRelationship(nB, nA, NetworkEdgeType.COMPLEMENTARITY);
 	}
-	
 	/**
 	 * Sets the state of a norm to the given state in the normative
 	 * network, and updates the omega function to update
@@ -261,7 +253,35 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					active norm
 	 */
 	public List<Norm> getRepresentedNorms() {
-		return super.getRepresentedNodes();
+		List<Norm> ret = new ArrayList<Norm>();
+		
+		/* Add the node if it is represented by some active ancestor node */
+		for(Norm node : this.getNorms()) {
+			if(this.isRepresented(node)) {
+				ret.add(node);
+			}
+		}		
+		return ret;
+	}
+	
+	
+	/**
+	 * Returns a list containing all the relationships of a type
+	 * that the normative network contains 
+	 *  
+	 * @param type the relationship type
+	 * 
+	 * @return a list containing all the relationships of a type
+	 * that the normative network contains
+	 */
+	public List<NetworkEdge> getRelationships(NetworkEdgeType type) {
+		List<NetworkEdge> rels = new ArrayList<NetworkEdge>();
+		for(NetworkEdge edge : this.graph.getEdges()) {
+			if(edge.getRelationship() == type) {
+				rels.add(edge);
+			}
+		}
+		return rels;
 	}
 	
 	/**
@@ -275,9 +295,17 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 *					inactive as well
 	 */
 	public List<Norm> getNotRepresentedNorms() {
-		return super.getNotRepresentedNodes();
+		List<Norm> ret = new ArrayList<Norm>();
+
+		/* Add the node if it is not represented by any active ancestor node */
+		for(Norm node : this.getNorms()) {
+			if(!this.isRepresented(node)) {
+				ret.add(node);
+			}
+		}		
+		return ret;
 	}
-	
+
 	/**
 	 * 
 	 * @param norm
@@ -313,7 +341,7 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * @return the norm with the given elements
 	 */
 	public Norm getNorm(SetOfPredicatesWithTerms precondition,
-			NormModality modality, EnvironmentAgentAction action) {
+			NormModality modality, AgentAction action) {
 		
 		Norm n = new Norm(precondition, modality, action);
 		for(Norm norm : this.getNodes()) {
@@ -341,15 +369,15 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 		return null;
 	}
 	
-	/**
-	 * Returns the norm with the given {@code id}
-	 * 
-	 * @param id the id of the norm
-	 * @return the norm with the given id
-	 */
-	public Norm getNormWithId(int id)  {
-		return this.ids.get(id);
-	}
+//	/**
+//	 * Returns the norm with the given {@code id}
+//	 * 
+//	 * @param id the id of the norm
+//	 * @return the norm with the given id
+//	 */
+//	public Norm getNormWithId(int id)  {
+//		return this.ids.get(id);
+//	}
 		
 	/**
 	 * Returns the normative system represented by this normative network
@@ -360,7 +388,7 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	public NormativeSystem getNormativeSystem() {
 		return this.omegaFunction.getNormativeSystem();
 	}
-	
+
 	/**
 	 * Returns the list of tags assigned to the {@code norm} received 
 	 * by parameter
@@ -402,27 +430,7 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 		norm = this.getNorm(norm);
 		return this.states.get(norm);
 	}
-	
-	/**
-	 * Returns a list containing all the relationships of a type
-	 * that the normative network contains 
-	 *  
-	 * @param type the relationship type
-	 * 
-	 * @return a list containing all the relationships of a type
-	 * that the normative network contains
-	 */
-	public List<NetworkEdge> getRelationships(NetworkEdgeType type) {
-		List<NetworkEdge> rels = new ArrayList<NetworkEdge>();
-		for(NetworkEdge edge : this.graph.getEdges()) {
-			if(edge.getRelationship() == type) {
-				rels.add(edge);
-			}
-		}
-		return rels;
-	}
-	
-	
+		
 	/**
 	 * Returns <tt>true</tt> if one of the following conditions hold:
 	 * <ol>
@@ -441,22 +449,20 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 			return false;
 		}
 		norm = this.getNorm(norm);
-//		
-//		if(this.getState(norm) == NetworkNodeState.ACTIVE) {
-//			return true;
-//		}
-//		else {
-//			List<Norm> parents = this.getParents(norm);
-//			
-//			for(Norm parent : parents) {
-//				if(this.isRepresented(parent)) {
-//					return true;
-//				}
-//			}
-//		}
-//		return false;
 		
-		return super.isRepresented(norm);
+		if(this.getState(norm) == NetworkNodeState.ACTIVE) {
+			return true;
+		}
+		else {
+			List<Norm> parents = this.getParents(norm);
+			
+			for(Norm parent : parents) {
+				if(this.isRepresented(parent)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 	/**
@@ -494,9 +500,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Ineffective</i>
 	 */
 	public boolean isIneffective(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.INEFFECTIVE);
 	}
 	
@@ -509,9 +512,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Unnecessary</i>
 	 */
 	public boolean isUnnecessary(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.UNNECESSARY);
 	}
 
@@ -524,9 +524,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Generalisable</i>
 	 */
 	public boolean isGeneralisable(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.GENERALISABLE);
 	}
 	
@@ -539,9 +536,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Substitutable</i>
 	 */
 	public boolean isSubstitutable(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.SUBSTITUTABLE);
 	}
 	
@@ -554,9 +548,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Substituter</i>
 	 */
 	public boolean isSubstituter(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.SUBSTITUTER);
 	}
 	
@@ -569,9 +560,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Exclussive</i>
 	 */
 	public boolean isExclussive(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.EXCLUSSIVE);
 	}
 	
@@ -584,9 +572,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					the tag <i>Complementary</i>
 	 */
 	public boolean isComplementary(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		return this.attributes.get(norm).contains(NormAttribute.COMPLEMENTARY);
 	}
 	
@@ -599,9 +584,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					network, namely it has generalisation level = 0
 	 */
 	public boolean isLeaf(Norm norm) {
-		if(!this.contains(norm)) {
-			return false;
-		}
 		Norm n = this.getNorm(norm);
 		return this.getChildren(n).size() <= 0;
 	}
@@ -616,10 +598,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					have a substitutability relationship in this normative network
 	 */
 	public boolean areSubstitutable(Norm n1, Norm n2) {
-		if(!this.contains(n1) || !this.contains(n2)) {
-			return false;
-		}
-		
 		List<NetworkEdge> edges = this.getRelationships(n1, n2);
 		
 		for(NetworkEdge edge : edges) {
@@ -640,10 +618,6 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					have a complementarity relationship in this normative network
 	 */
 	public boolean areComplementary(Norm n1, Norm n2) {
-		if(!this.contains(n1) || !this.contains(n2)) {
-			return false;
-		}
-		
 		List<NetworkEdge> edges = this.getRelationships(n1, n2);
 		
 		for(NetworkEdge edge : edges) {
@@ -678,7 +652,7 @@ public class NormativeNetwork extends GeneralisationNetwork<Norm> {
 	 * 					and {@code action}
 	 */
 	public boolean contains(SetOfPredicatesWithTerms precondition, 
-			NormModality modality, EnvironmentAgentAction action) {
+			NormModality modality, AgentAction action) {
 		
 		Norm n = new Norm(precondition, modality, action);
 		for(Norm norm : this.getNodes()) {

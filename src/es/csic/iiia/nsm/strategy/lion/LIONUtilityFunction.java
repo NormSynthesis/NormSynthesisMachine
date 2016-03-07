@@ -7,7 +7,6 @@ import java.util.Map;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.Goal;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.evaluation.NormComplianceOutcomes;
@@ -30,7 +29,6 @@ public class LIONUtilityFunction  {
 	//---------------------------------------------------------------------------
 
 	private Map<Norm, List<SetOfPredicatesWithTerms>> negRewardedNorms;
-//	private NormSynthesisMetrics nsMetrics;
 	
 	//---------------------------------------------------------------------------
 	// Methods 
@@ -39,9 +37,8 @@ public class LIONUtilityFunction  {
 	/**
 	 * Constructor
 	 */
-	public LIONUtilityFunction(NormSynthesisMetrics nsMetrics) {
+	public LIONUtilityFunction() {
 		this.negRewardedNorms = new HashMap<Norm, List<SetOfPredicatesWithTerms>>();
-//		this.nsMetrics = nsMetrics;
 	}
 
 	/**
@@ -64,7 +61,7 @@ public class LIONUtilityFunction  {
 	public Map<Norm, List<SetOfPredicatesWithTerms>> evaluate(Dimension dim, Goal goal, 
 			NormComplianceOutcomes nCompliance, NormativeNetwork nNetwork) {
 
-		float reward;
+		float oldScore, score, reward;
 		this.negRewardedNorms.clear();
 
 		switch(dim) {
@@ -80,18 +77,20 @@ public class LIONUtilityFunction  {
 					break;
 				}
 
+				oldScore = nNetwork.getUtility(appNorm).getScore(dim, goal);
 				reward = (float) nANoC / (nAC + nANoC); 
-				nNetwork.setScore(appNorm, dim, goal, reward);
+//				score = (float) (oldScore + 0.1 * (reward - oldScore));
+				score = (float) reward;
+				nNetwork.setScore(appNorm, dim, goal, score);
 
 				/* If the norm has been negatively rewarded, add it to the
 				 * map of negatively rewarded norms */
-				List<SetOfPredicatesWithTerms> agContexts = 
-						nCompliance.getAgentContextsWhereNormApplies(appNorm);
+//				if(reward < 1.0f) {
+					List<SetOfPredicatesWithTerms> agContexts = 
+							nCompliance.getAgentContextsWhereNormApplies(appNorm);
 
-				this.negRewardedNorms.put(appNorm, agContexts);
-
-//				/* Update complexities metrics */
-//				this.nsMetrics.incNumNodesVisited();
+					this.negRewardedNorms.put(appNorm, agContexts);
+//				}
 			}
 			break;
 
@@ -102,18 +101,20 @@ public class LIONUtilityFunction  {
 				int nVC = nCompliance.getNumInfringementsWithConflict(violNorm);
 				int nVNoC = nCompliance.getNumInfrsWithNoConflict(violNorm);	
 
+				oldScore = nNetwork.getUtility(violNorm).getScore(dim, goal);
 				reward = (float) nVC / (nVC + nVNoC); 
-				nNetwork.setScore(violNorm, dim, goal, reward);
+//				score = (float) (oldScore + 0.1 * (reward - oldScore));
+				score = (float) reward;
+				nNetwork.setScore(violNorm, dim, goal, score);
 
 				/* If the norm has been negatively rewarded, add it to the
 				 * map of negatively rewarded norms */
-				List<SetOfPredicatesWithTerms> agContexts = 
-						nCompliance.getAgentContextsWhereNormApplies(violNorm);
+				if(reward < 1.0f) {
+					List<SetOfPredicatesWithTerms> agContexts = 
+							nCompliance.getAgentContextsWhereNormApplies(violNorm);
 
-				this.negRewardedNorms.put(violNorm, agContexts);
-
-//				/* Update complexities metrics */
-//				this.nsMetrics.incNumNodesVisited();
+					this.negRewardedNorms.put(violNorm, agContexts);
+				}
 			}
 			break;
 		}
@@ -134,7 +135,7 @@ public class LIONUtilityFunction  {
 	public void evaluate(Goal goal, NormGroupOutcomes nGroupCompliance,
 			NormGroupNetwork nGroupNetwork) {
 
-		float reward;
+		float oldScore, score, reward;
 
 		for(NormGroup normGroup : nGroupCompliance.getNormGroups()) {
 			int nAC = nGroupCompliance.getNumComplsWithConflict(normGroup);
@@ -144,8 +145,11 @@ public class LIONUtilityFunction  {
 				break;
 			}
 
+			oldScore = nGroupNetwork.getUtility(normGroup).getScore(Dimension.Effectiveness, goal);
 			reward = (float) nANoC / (nAC + nANoC); 
-			nGroupNetwork.setScore(normGroup, Dimension.Effectiveness, goal, reward);
+//			score = (float) (oldScore + 0.1 * (reward - oldScore));
+			score = (float) reward;
+			nGroupNetwork.setScore(normGroup, Dimension.Effectiveness, goal, score);
 		}
 	}
 }

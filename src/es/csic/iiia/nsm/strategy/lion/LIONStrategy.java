@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
@@ -13,7 +12,6 @@ import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormativeSystem;
@@ -38,38 +36,42 @@ public class LIONStrategy implements NormSynthesisStrategy {
 	// Attributes
 	//---------------------------------------------------------------------------
 
-	protected DomainFunctions dmFunctions;
-	protected PredicatesDomains predicatesDomains;
-	protected Monitor monitor;
 	protected List<Dimension> normEvDimensions;
 	protected NormSynthesisMachine nsm;
 	protected NormSynthesisSettings nsmSettings;
 	protected NormReasoner normReasoner;
 	protected NormativeNetwork normativeNetwork;
 	protected NormGroupNetwork normGroupNetwork;
-	protected NormSynthesisMetrics nsMetrics;
-	protected NormGeneralisationMode genMode; 
-	protected int genStep;
-	
+
 	protected LIONNormGenerator normGenerator;
 	protected LIONNormEvaluator normEvaluator;
 	protected LIONNormClassifier normClassifier;
 	protected LIONNormRefiner normRefiner;
+
+	protected DomainFunctions dmFunctions;
+	protected PredicatesDomains predicatesDomains;
+	protected Monitor monitor;
+
 	protected LIONUtilityFunction utilityFunction;	
 	protected LIONOperators operators;
-	
-	protected Map<Goal,List<Conflict>> conflicts;
+	protected NormGeneralisationMode genMode; 
+	protected int genStep;
+
 	protected Map<ViewTransition, NormsApplicableInView> normApplicability;
 	protected Map<Goal,Map<ViewTransition, NormComplianceOutcomes>> normCompliance;
 	protected Map<Goal,NormGroupOutcomes> normGroupCompliance;
 
-	protected List<ViewTransition> viewTransitions;
 	protected List<Norm> normsInNormativeNetwork;
 	protected List<Norm> normsInNormativeSystem;
 	protected List<Norm> normsAddedToNNThisCycle;
 	protected List<Norm> normsAddedToNSThisCycle;
 	protected List<Norm> normsRemovedFromNSThisCycle;
 	protected List<Norm> visitedNorms;
+
+	protected List<ViewTransition> viewTransitions;
+	protected Map<Goal,List<Conflict>> conflicts;
+
+	protected boolean hasNonRegulatedConflictsThisTick;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -87,18 +89,17 @@ public class LIONStrategy implements NormSynthesisStrategy {
 		this.nsm = nsm;
 		this.genMode = genMode;
 		this.genStep = genStep;
-		this.nsMetrics = nsm.getNormSynthesisMetrics();
 		this.nsmSettings = nsm.getNormSynthesisSettings();
 		this.normEvDimensions = nsm.getNormEvaluationDimensions();
 		this.dmFunctions = nsm.getDomainFunctions();
-		this.predicatesDomains = nsm.getPredicatesDomains();
+		this.predicatesDomains = this.nsm.getPredicatesDomains();
 		this.normativeNetwork = nsm.getNormativeNetwork();
-		this.normGroupNetwork = nsm.getNormGroupNetwork();
+		this.normGroupNetwork = this.nsm.getNormGroupNetwork();
 		this.monitor = nsm.getMonitor();
 		this.normReasoner = nsm.getNormReasoner();
 		
 		this.operators = new LIONOperators(this, normReasoner, nsm);
-		this.utilityFunction = new LIONUtilityFunction(nsm.getNormSynthesisMetrics());
+		this.utilityFunction = new LIONUtilityFunction();
 		this.normApplicability = new HashMap<ViewTransition, 
 				NormsApplicableInView>();
 
@@ -122,13 +123,12 @@ public class LIONStrategy implements NormSynthesisStrategy {
 
 		this.normEvaluator = new LIONNormEvaluator(normEvDimensions,
 				nsmSettings, dmFunctions, normativeNetwork, normGroupNetwork,
-				normReasoner, utilityFunction, operators, nsm.getNormSynthesisMetrics());
+				normReasoner, utilityFunction, operators);
 
-		Random random = this.nsm.getRandom();
 		this.normRefiner = new LIONNormRefiner(normEvDimensions, 
 				nsmSettings, dmFunctions, predicatesDomains, normativeNetwork, 
-				normGroupNetwork, normReasoner, nsm.getNormSynthesisMetrics(), operators,
-				genMode, genStep, random);
+				normGroupNetwork, normReasoner, operators,
+				genMode, genStep, nsm.getRandom());
 
 		this.normsInNormativeNetwork = new ArrayList<Norm>();
 		this.normsInNormativeSystem  = new ArrayList<Norm>();
@@ -136,6 +136,8 @@ public class LIONStrategy implements NormSynthesisStrategy {
 		this.normsAddedToNSThisCycle = new ArrayList<Norm>();
 		this.normsRemovedFromNSThisCycle = new ArrayList<Norm>();
 		this.visitedNorms = new ArrayList<Norm>();
+
+		this.hasNonRegulatedConflictsThisTick = false;
 	}
 
 	/**
@@ -155,7 +157,7 @@ public class LIONStrategy implements NormSynthesisStrategy {
 	 * @return the normative system resulting from the norm synthesis cycle
 	 */
 	public NormativeSystem execute() {	
-		this.nsMetrics.resetNonRegulatedConflicts();
+		this.hasNonRegulatedConflictsThisTick = false;
 		this.visitedNorms.clear();
 
 		/* Norm generation */
@@ -189,7 +191,6 @@ public class LIONStrategy implements NormSynthesisStrategy {
 			if(!this.normsInNormativeNetwork.contains(norm)) {
 				this.normsInNormativeNetwork.add(norm);
 				this.normsAddedToNNThisCycle.add(norm);
-				this.normReasoner.addNorm(norm); // TODO: Lo he traido de abajo
 			}
 		}
 		
@@ -213,51 +214,19 @@ public class LIONStrategy implements NormSynthesisStrategy {
 			this.normsInNormativeSystem.remove(norm);
 		}
 		
-//		/* Add to the norm reasoner those new norms that are now represented */
-//		List<Norm> normsRepresented = this.normativeNetwork.getRepresentedNorms();
-//		for(Norm norm : normsRepresented) {
-//			if(!this.normReasoner.contains(norm)) {
-//				this.normReasoner.addNorm(norm);
-//			}
-//		}
+		/* Add to the norm reasoner those new norms that are now represented */
+		List<Norm> normsRepresented = this.normativeNetwork.getRepresentedNorms();
+		for(Norm norm : normsRepresented) {
+			if(!this.normReasoner.contains(norm)) {
+				this.normReasoner.addNorm(norm);
+			}
+		}
 	}
 
 	public LIONOperators getOperators() {
 		return this.operators;
 	}
 	
-	/**
-	 * 
-	 * @return
-	 */
-	public LIONNormGenerator getNormGenerator() {
-		return normGenerator;
-	}
-
-	/**
-	 * 
-	 * @return
-	 */
-	public LIONNormEvaluator getNormEvaluator() {
-		return normEvaluator;
-	}
-
-	/**
-	 * 
-	 * @return
-	 */
-	public LIONNormClassifier getNormClassifier() {
-		return normClassifier;
-	}
-
-	/**
-	 * 
-	 * @return
-	 */
-	public LIONNormRefiner getNormRefiner() {
-		return normRefiner;
-	}
-
 	/**
 	 * 
 	 * @return
@@ -274,12 +243,19 @@ public class LIONStrategy implements NormSynthesisStrategy {
 		return this.normsRemovedFromNSThisCycle;
 	}
 
-	/* (non-Javadoc)
-	 * @see es.csic.iiia.nsm.strategy.NormSynthesisStrategy#addDefaultNormativeSystem(java.util.List)
+	/**
+	 * 
+	 * @return
 	 */
-  public void addDefaultNormativeSystem(List<Norm> defaultNorms) {
-	  for(Norm norm : defaultNorms) {
-	  	this.operators.add(norm);
-	  }
-  }
+	public boolean hasNonRegulatedConflictsThisTick() {
+		return this.hasNonRegulatedConflictsThisTick;
+	}
+
+	/**
+	 * 
+	 */
+	@Override
+	public void newNonRegulatedConflictsSolvedThisTick() {
+		this.hasNonRegulatedConflictsThisTick = true;
+	}
 }

@@ -5,11 +5,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.DomainFunctions;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
@@ -37,10 +36,8 @@ public class GeneralisationTrees {
 	// Attributes
 	//---------------------------------------------------------------------------
 	
-	private List<Norm> allNorms;
 	private Map<Norm, List<PotentialGeneralisation>> potentialGens;
 	private GeneralisationReasoner genReasoner;
-	private NormSynthesisMetrics nsMetrics;
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -53,11 +50,8 @@ public class GeneralisationTrees {
 	 * @param nNetwork the normative network
 	 */
 	public GeneralisationTrees(PredicatesDomains predDomains, 
-			DomainFunctions dmFunctions, NormativeNetwork nNetwork,
-			NormSynthesisMetrics nsMetrics) {
+			DomainFunctions dmFunctions, NormativeNetwork nNetwork) {
 		
-		this.nsMetrics = nsMetrics;
-		this.allNorms = new ArrayList<Norm>();
 		this.potentialGens = new HashMap<Norm, List<PotentialGeneralisation>>();
 		this.genReasoner = new GeneralisationReasoner(predDomains, dmFunctions);
 	}
@@ -77,52 +71,26 @@ public class GeneralisationTrees {
 		/* Norm context generalisation */
 		for(SetOfPredicatesWithTerms pPrecond : pPreconds) {
 			NormModality mod = norm.getModality();
-			EnvironmentAgentAction action = norm.getAction();
+			AgentAction action = norm.getAction();
 
 			Norm parent = new Norm(pPrecond, mod, action);
-			
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesSynthesised();
-			
-			/* Avoid duplicate nodes */
-			if(this.contains(parent)) {
-				parent = this.getNorm(parent);
-			}
-			else {
-				this.allNorms.add(parent);
-				this.nsMetrics.incNumNodesInMemory();
-			}
-			
 			List<Norm> children = new ArrayList<Norm>();
 			List<SetOfPredicatesWithTerms> chPreconds = this.genReasoner.
 					getChildContexts(pPrecond);
-			
+
 			for(SetOfPredicatesWithTerms chPrecond : chPreconds) {
 				Norm chNorm = new Norm(chPrecond, mod, action);
-				
-				/* Update complexities metrics */
-				this.nsMetrics.incNumNodesSynthesised();
-				
-				/* Avoid duplicate nodes */
-				if(this.contains(chNorm)) {
-					chNorm = this.getNorm(chNorm);
-				}
-				else {
-					this.allNorms.add(chNorm);
-					this.nsMetrics.incNumNodesInMemory();
-				}
-				
 				children.add(chNorm);
 			}
 
 			// Add new candidate generalisation
-			PotentialGeneralisation cGen = 
-					new PotentialGeneralisation(parent, children, nsMetrics);
+			PotentialGeneralisation cGen = new PotentialGeneralisation(
+					parent, children);
 
 			if(this.contains(cGen)) {
 				cGen = this.get(cGen);
 			}
-			candidateGens.add(cGen);
+			candidateGens.add(cGen);				
 		}
 
 		// Add candidate generalisations of the norm
@@ -157,9 +125,6 @@ public class GeneralisationTrees {
 				if(potGen.equals(candGen)) {
 					return true;
 				}
-				
-				/* Update computation metrics */
-				this.nsMetrics.incNumNodesVisited();
 			}	
 		}
 		return false;
@@ -183,9 +148,6 @@ public class GeneralisationTrees {
 				if(potGen.equals(otherPotGen)) {
 					return potGen;
 				}
-				
-				/* Update computation metrics */
-				this.nsMetrics.incNumNodesVisited();
 			}	
 		}
 		return null;
@@ -231,35 +193,4 @@ public class GeneralisationTrees {
 		return generalisationNodes.size();
 	}
 
-	/**
-	 * Returns <tt>true</tt> if the normative network contains the norm
-	 * 
-	 * @param norm the norm to search for
-	 * @return <tt>true</tt> if the normative network contains the norm
-	 */
-	public boolean contains(Norm n)	{
-		for(Norm norm : this.allNorms) {
-			if(n.equals(norm)) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
-	/**
-	 * Returns a norm in the normative network with the 
-	 * {@code precondition}, {@code modality} and {@code action}
-	 * of the norm passed by parameter
-	 * 
-	 * @param the norm to retrieve from the normative network
-	 * @return the norm with the given elements
-	 */
-	public Norm getNorm(Norm n) {
-		for(Norm norm : this.allNorms) {
-			if(n.equals(norm)) {
-				return norm;
-			}
-		}
-		return null;
-	}
 }

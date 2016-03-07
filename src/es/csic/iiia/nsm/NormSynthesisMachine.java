@@ -24,7 +24,6 @@ import es.csic.iiia.nsm.strategy.NormSynthesisStrategy;
 import es.csic.iiia.nsm.strategy.iron.IRONStrategy;
 import es.csic.iiia.nsm.strategy.lion.LIONStrategy;
 import es.csic.iiia.nsm.strategy.simon.SIMONStrategy;
-import es.csic.iiia.nsm.strategy.simonPlus.SIMONPlusStrategy;
 import es.csic.iiia.nsm.visualization.NormSynthesisInspector;
 
 /**
@@ -156,14 +155,14 @@ public class NormSynthesisMachine {
 
 		/* Create norms reasoners */
 		this.normReasoner = new NormReasoner(this.settings.getSystemGoals(), 
-				this.predDomains, this.dmFunctions, this.metrics);
+				this.predDomains, this.dmFunctions);
 		
 		this.normEvaluationReasoner = new NormReasoner(this.settings.getSystemGoals(), 
-				this.predDomains, this.dmFunctions, this.metrics);
+				this.predDomains, this.dmFunctions);
 		
 		/* Create norm synthesis strategy */
 		switch(option) {
-
+			
 		case IRON:
 			strategy = new IRONStrategy(this);
 			break;
@@ -172,14 +171,8 @@ public class NormSynthesisMachine {
 			strategy = new SIMONStrategy(this,genMode,genStep);
 			break;
 			
-		case SIMONPlus:
-			strategy = new SIMONPlusStrategy(this,genMode,genStep);
-			this.nNetwork.setNormsDefaultUtility(0);
-			break;
-			
 		case LION:
 			strategy = new LIONStrategy(this,genMode,genStep);
-			this.nNetwork.setNormsDefaultUtility(0);
 			break;
 		}
 		
@@ -219,11 +212,11 @@ public class NormSynthesisMachine {
 		/* Create norms reasoners */
 		this.normReasoner = 
 				new NormReasoner(this.settings.getSystemGoals(), 
-				this.predDomains, this.dmFunctions, this.metrics);
+				this.predDomains, this.dmFunctions);
 		
 		this.normEvaluationReasoner = 
 				new NormReasoner(this.settings.getSystemGoals(), 
-				this.predDomains, this.dmFunctions, this.metrics);
+				this.predDomains, this.dmFunctions);
 		
 		/* Add default pool of norms */
 		if(poolOfNorms != null) {

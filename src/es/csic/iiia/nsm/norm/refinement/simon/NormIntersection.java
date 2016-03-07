@@ -1,7 +1,7 @@
 package es.csic.iiia.nsm.norm.refinement.simon;
 
 import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.agent.language.SetOfStrings;
@@ -25,7 +25,7 @@ public class NormIntersection {
 	private PredicatesDomains predDomains;
 	
 	private NormModality modality;
-	private EnvironmentAgentAction action;
+	private AgentAction action;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -192,7 +192,7 @@ public class NormIntersection {
 	 * 
 	 * @return
 	 */
-	public EnvironmentAgentAction getAction() {
+	public AgentAction getAction() {
 		return this.action;
 	}
 	
@@ -224,15 +224,6 @@ public class NormIntersection {
 				+ "Diff: " + this.difference.toString();
 	}
 
-	/**
-	 * Returns the predicates and domains employed to create the intersection
-	 * 
-	 * @return the predicates and domains employed to create the intersection
-	 */
-	public PredicatesDomains getPredicatesDomains() {
-		return this.predDomains;
-	}
-	
 	/**
 	 * Returns an identifier for two norms that can be intersected
 	 *  

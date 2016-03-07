@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
-import es.csic.iiia.nsm.agent.EnvironmentAgentContext;
+import es.csic.iiia.nsm.NormSynthesisMachine;
+import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.AgentContext;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
-import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.NormModality;
@@ -43,8 +43,7 @@ public class CBRNormGenerationMachine implements NormGenerationMachine {
 	private NormativeNetwork normativeNetwork;	// the normative network
 	private NormReasoner normReasoner;
 	private NormSynthesisStrategy strategy;
-	private NormSynthesisMetrics nsMetrics;
-
+	
 	//---------------------------------------------------------------------------
 	// Methods 
 	//---------------------------------------------------------------------------
@@ -57,14 +56,13 @@ public class CBRNormGenerationMachine implements NormGenerationMachine {
 	 */
 	public CBRNormGenerationMachine(NormativeNetwork normativeNetwork, 
 			NormReasoner normReasoner, NormSynthesisStrategy strategy,
-			Random random, NormSynthesisMetrics nsMetrics) {
+			Random random) {
 
 		this.random = random;
 		this.caseBase = new CaseBase();
 		this.normativeNetwork = normativeNetwork;
 		this.normReasoner = normReasoner;
 		this.strategy = strategy;
-		this.nsMetrics = nsMetrics;
 	}
 
 	/**
@@ -147,7 +145,7 @@ public class CBRNormGenerationMachine implements NormGenerationMachine {
 		CaseSolution sol = new CaseSolution();
 		SetOfPredicatesWithTerms precondition;
 		Norm norm;
-
+		
 		/* Identify conflict and view to solve */
 		int timeStepToSolve = this.identifyTimeStepToSolve(cDesc);
 
@@ -163,89 +161,51 @@ public class CBRNormGenerationMachine implements NormGenerationMachine {
 		/* Retrieve those norms that are represented and apply
 		 * to each agent that are considered as involved in the conflict */
 		List<Norm> representedNormsApplicable = new ArrayList<Norm>();
-
+		
 		for(long agentId : responsibleAgents) {
+			AgentContext aContext = dmFunctions.agentContextFunction(
+					agentId, viewToSolve);
 			
+			NormsApplicableToAgentContext normsApplicable = 
+					this.normReasoner.getNormsApplicable(aContext.getDescription());
+
+			for(Norm n : normsApplicable.getApplicableNorms()) {
+				if(this.normativeNetwork.isRepresented(n)) {
+					representedNormsApplicable.add(n);
+				}
+			}
 		}
-
-
-		//		List<Long> agentsWithApplicableNorms = normApplicability.getAgentIds();
-		//		
-		//		/* If any norms applied to the conflicting agents,
-		//		 * then do not generate norms */
-		//		for(long agentId : responsibleAgents) {
-		//			if(agentsWithApplicableNorms.contains(agentId)) {
-		//				return sol;
-		//			}
-		//		}
-
-		this.nsMetrics.newNonRegulatedConflictsSolvedThisTick();
-
+		
+		if(!representedNormsApplicable.isEmpty()) {
+			return sol;
+		}
+		
+//		List<Long> agentsWithApplicableNorms = normApplicability.getAgentIds();
+//		
+//		/* If any norms applied to the conflicting agents,
+//		 * then do not generate norms */
+//		for(long agentId : responsibleAgents) {
+//			if(agentsWithApplicableNorms.contains(agentId)) {
+//				return sol;
+//			}
+//		}
+		
+		this.strategy.newNonRegulatedConflictsSolvedThisTick();
+		
 		/* For each responsible agent, generate a norm */
 		for(Long agentId : responsibleAgents) {
-			List<EnvironmentAgentAction> actions;
-			EnvironmentAgentAction action;
+			List<AgentAction> actions;
+			AgentAction action;
 
-			/* Check if the agent existed in the scenario in the
-			 * previous tick (not new entry) */
-			boolean agentExistedInPreviousTick =
-					viewToSolve.getAgentIds().contains(agentId);
-
-			if(!agentExistedInPreviousTick) {
-				continue;
-			}
-			
-			/* Retrieve the agent's context in the previous time step */
-			EnvironmentAgentContext aContext = dmFunctions.agentContextFunction(
-					agentId, viewToSolve);
-
-			/* Ensure that it had a valid context */
-			if(aContext == null) {
-				continue;
-			}
-			
-			/* Check that no norms applied to the agent */
-			if(aContext != null) {
-  			NormsApplicableToAgentContext normsApplicable = 
-  					this.normReasoner.getNormsApplicable(aContext.getDescription());
-  
-  			for(Norm n : normsApplicable.getApplicableNorms()) {
-  				if(this.normativeNetwork.isRepresented(n) || 
-  						this.normativeNetwork.getState(n) == NetworkNodeState.CREATED) {
-  					representedNormsApplicable.add(n);
-  				}
-  			}
-			}
-			if(!representedNormsApplicable.isEmpty()) {
-				continue;
-			}
-			
-			/* Forbid a random action of those performed by the agent */
+			/* Forbid the action corresponding to the time step to solve */
 			actions = dmFunctions.agentActionFunction(agentId,
 					cDesc.getConflictSource());
-			//			action = actions.get(actions.size() + timeStepToSolve);
-			action = actions.get(random.nextInt(actions.size()));
+			action = actions.get(actions.size() + timeStepToSolve);
 
-//			if(action.toString().equals("Stop")) {
-//				System.out.println();
-//				
-//				EnvironmentAgentContext aContext = dmFunctions.agentContextFunction(
-//						agentId, viewToSolve);
-//				
-//
-//				NormsApplicableToAgentContext normsApplicable = 
-//						this.normReasoner.getNormsApplicable(aContext.getDescription());
-//
-//				for(Norm n : normsApplicable.getApplicableNorms()) {
-//					if(this.normativeNetwork.isRepresented(n) || 
-//							this.normativeNetwork.getState(n) == NetworkNodeState.CREATED) {
-//						representedNormsApplicable.add(n);
-//					}
-//				}
-//			}
-			
 			/* Create norm's precondition */
+			AgentContext aContext = dmFunctions.agentContextFunction(agentId, viewToSolve);
 			precondition = aContext.getDescription();
+			
 			if(precondition.isEmpty()) {
 				continue;
 			}
@@ -253,7 +213,7 @@ public class CBRNormGenerationMachine implements NormGenerationMachine {
 			/* The norm exists in the normative network -> Retrieve it */
 			if(normativeNetwork.contains(precondition,
 					NormModality.Prohibition, action)) {
-
+				
 				norm = normativeNetwork.getNorm(precondition,
 						NormModality.Prohibition, action);
 

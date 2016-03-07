@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
@@ -38,6 +38,7 @@ import es.csic.iiia.nsm.perception.ViewTransition;
 public class LIONNormRefiner {
 
 	protected Random random;
+	
 	protected List<Dimension> normEvDimensions;
 	protected NormSynthesisSettings nsmSettings;
 
@@ -47,8 +48,7 @@ public class LIONNormRefiner {
 	protected NormReasoner normReasoner;
 	protected NormativeNetwork normativeNetwork;
 	protected NormGroupNetwork normGroupNetwork;
-	protected NormSynthesisMetrics nsMetrics;
-	
+
 	protected Map<Norm, List<NormAttribute>> normClassifications;
 
 	protected LIONUtilityFunction utilityFunction;	
@@ -58,7 +58,6 @@ public class LIONNormRefiner {
 
 	protected Map<String, NormIntersection> normIntersections;
 	protected Map<NormGroupCombination, Integer> potentialComplementaryPairs;
-	protected boolean isNormGenReactiveToConflicts;
 
 	/**
 	 * 
@@ -68,9 +67,10 @@ public class LIONNormRefiner {
 			NormSynthesisSettings nsmSettings, DomainFunctions dmFunctions,
 			PredicatesDomains predDomains, NormativeNetwork normativeNetwork,
 			NormGroupNetwork normGroupNetwork, NormReasoner normReasoner,
-			NormSynthesisMetrics nsMetrics, LIONOperators operators,
-			NormGeneralisationMode genMode, int genStep, Random random) {
+			LIONOperators operators, NormGeneralisationMode genMode, int genStep,
+			Random random) {
 
+		this.random = random;
 		this.normEvDimensions = normEvDimensions;
 		this.nsmSettings = nsmSettings;
 		this.dmFunctions = dmFunctions;
@@ -81,17 +81,12 @@ public class LIONNormRefiner {
 		this.operators = operators;
 		this.genMode = genMode;
 		this.genStep = genStep;
-		this.random = random;
-		this.nsMetrics = nsMetrics;
 
 		this.potentialComplementaryPairs = new HashMap<NormGroupCombination,Integer>();
 		this.normIntersections = new HashMap<String, NormIntersection>();
 		this.normClassifications = new HashMap<Norm, List<NormAttribute>>();
 		this.normClassifier = new LIONNormClassifier(normEvDimensions,
-				nsmSettings,normativeNetwork, normGroupNetwork, operators, nsMetrics);
-
-		this.isNormGenReactiveToConflicts = this.nsmSettings.
-				isNormGenerationReactiveToConflicts();
+				nsmSettings,normativeNetwork, normGroupNetwork, operators);
 	}
 
 	/**
@@ -100,7 +95,7 @@ public class LIONNormRefiner {
 	 */
 	public void step(Map<ViewTransition, NormsApplicableInView> normApplicability,
 			List<Norm> normsActivatedDuringGeneration) {
-
+		
 		List<Norm> processed = new ArrayList<Norm>();
 		List<Norm> visited = new ArrayList<Norm>();
 
@@ -113,36 +108,33 @@ public class LIONNormRefiner {
 				this.normativeNetwork.addAttribute(norm, NormAttribute.SUBSTITUTER);
 				System.out.println("Reactivate substitutable (maybe it's complementary... " + norm);
 			}
-
+			
 			for(Norm toSubstitute : substitutable) {
 				System.out.println("Deactivates substitutable " + toSubstitute);
 				System.out.println("-----------------------------------------------------------------");
-
+				
 				this.normativeNetwork.removeAttribute(toSubstitute, NormAttribute.SUBSTITUTER);
-				this.deactivateUp(toSubstitute, NetworkNodeState.SUBSTITUTED, visited);
-
+				this.specialiseDown(toSubstitute, NetworkNodeState.SUBSTITUTED, visited);
+				
 				NormGroupCombination nGrComb = 
 						this.normGroupNetwork.getNormGroupCombination(norm, toSubstitute);
-
+				
 				if(!this.potentialComplementaryPairs.containsKey(nGrComb)) {
 					this.potentialComplementaryPairs.put(nGrComb, 0);
 				}
 				int numReactivations = this.potentialComplementaryPairs.get(nGrComb);
 				this.potentialComplementaryPairs.put(nGrComb, numReactivations+1);
-
+				
 				/* Cycle detection. If the pair of norms have substituted one another
 				 * 5 times or more, then remove the substitutability relationship
 				 * (due to a possible false positive) */
 				if(numReactivations > 5) {
 					this.normativeNetwork.removeSubstitutability(norm, toSubstitute);
 				}
-
-				/* Update complexities metrics */
-				this.nsMetrics.incNumNodesVisited();
 			}
 		}
 		visited.clear();
-
+		
 		/* Compute norms that must be revised */
 		List<Norm> normsToRevise = this.checkNormsToRevise(normApplicability);
 
@@ -151,10 +143,6 @@ public class LIONNormRefiner {
 
 		/* Refine norms based on norm classifications */
 		for(Norm norm : normClassifications.keySet()) {
-
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
-
 			if(processed.contains(norm)) {
 				continue;
 			}
@@ -164,26 +152,18 @@ public class LIONNormRefiner {
 			boolean isNecessary = attributes.contains(NormAttribute.NECESSARY);
 			boolean isIneffective = attributes.contains(NormAttribute.INEFFECTIVE);
 			boolean isUnnecessary = attributes.contains(NormAttribute.UNNECESSARY);
-			boolean classifiedInEffectiveness = isEffective || isIneffective;
 
 			/* If the norm is whether ineffective or unnecessary, then deactivate
 			 * it (specialise it into its children) */
 			if(isIneffective || isUnnecessary) {
 				visited.clear();
-				deactivateUp(norm, NetworkNodeState.DISCARDED, visited);
+				specialiseDown(norm, NetworkNodeState.DISCARDED, visited);
 			}
 
-			/* ONLY IF norm generation is not reactive to conflicts:
-			 * activate norms when they are proven to be necessary */
-			else if(!isNormGenReactiveToConflicts) 
-			{
-				if((isEffective || !classifiedInEffectiveness) && isNecessary) {
-					if(	this.normativeNetwork.isLeaf(norm) &&
-							!this.normativeNetwork.isRepresented(norm)) 
-					{
-						this.activateUp(norm);
-					}
-				}
+			if(isEffective && isNecessary &&
+					this.normativeNetwork.isLeaf(norm) &&
+					!this.normativeNetwork.isRepresented(norm)) {
+				this.operators.activate(norm);
 			}
 
 			/* If the norm has enough utility to be generalised, 
@@ -192,7 +172,7 @@ public class LIONNormRefiner {
 			if(isGeneralisable) {
 				generaliseUp(norm, genMode, genStep);
 			}
-
+			
 			/* If the norm is substitutable, retrieve the norm it is 
 			 * substitutable with and choose one of them to be specialised */
 			boolean isSubstitutable = attributes.contains(NormAttribute.SUBSTITUTABLE);
@@ -207,75 +187,19 @@ public class LIONNormRefiner {
 					substituter = norm;
 				}
 
-				/* Specialise norm to substitute */
-				visited.clear();
-				deactivateUp(normToSubstitute, NetworkNodeState.SUBSTITUTED, visited);
-
-				processed.add(norm);
-				processed.add(norm2);
-
-				/* Mark substituter */
-				this.normativeNetwork.addAttribute(substituter, NormAttribute.SUBSTITUTER);
-				
 				System.out.println("Substituting norm " + normToSubstitute);
 				System.out.println("Substituter " + substituter);
 				System.out.println("-----------------------------------------------------------");
-			}
-		}
-	}
+				
+				/* Specialise norm to substitute */
+				visited.clear();
+				specialiseDown(normToSubstitute, NetworkNodeState.SUBSTITUTED, visited);
 
-	/**
-	 * Reactivates a norm that was previously created, activated and deactivated.
-	 * This reactivation is performed recursively, trying to re-generalise the norm
-	 * again, activating those parents that can be reactivated  
-	 * 
-	 * @param norm the norm to reactivate
-	 */	
-	private void activateUp(Norm norm) {
-		if(!normativeNetwork.isRepresented(norm)) {
-
-			/* Activate the norm */
-			this.operators.activate(norm);
-
-			List<Norm> children = this.normativeNetwork.getChildren(norm);
-			List<Norm> parents = this.normativeNetwork.getParents(norm);
-			List<Norm> notRepresented = this.normativeNetwork.getNotRepresentedNorms();
-
-			/* Deactivate all its child and set them as "represented" */
-			for(Norm child : children) {
-				if(this.normativeNetwork.isRepresented(child)) {
-					this.operators.deactivate(child, NetworkNodeState.GENERALISED); 
-				}
-			}
-
-			/* If the norm has no parents, then it will remain active,
-			 * representing its children. Then, we try to generalise it up */
-			if(parents.isEmpty()) {
-				this.generaliseUp(norm, genMode, genStep);
-			}
-
-			/* Otherwise, if the norm has parents, check for each parent
-			 * if it can be reactivated. A parent can be reactivated if it does
-			 * not include any norm that is not represented, namely if it does
-			 * not represent any discarded norms */
-			else {
-
-				/* Check if any parent can be reactivated */
-				for(Norm parent : parents) {
-					boolean activateParent = true;
-
-					/* Check that the parent norm does not contain an inactive norm */
-					for(Norm notRepr: notRepresented){
-						if(this.normReasoner.satisfies(notRepr, parent) && 
-								!notRepr.equals(parent))	{
-							activateParent = false;
-							break;
-						}
-					}
-					if(activateParent) {
-						this.activateUp(parent);
-					}
-				}
+				processed.add(norm);
+				processed.add(norm2);
+				
+				/* Mark substituter */
+				this.normativeNetwork.addAttribute(substituter, NormAttribute.SUBSTITUTER);
 			}
 		}
 	}
@@ -286,21 +210,22 @@ public class LIONNormRefiner {
 	 * 
 	 * @param norm the norm to specialise
 	 */
-	public void deactivateUp(Norm norm, NetworkNodeState specState, List<Norm> visited) {
+	protected void specialiseDown(Norm norm, NetworkNodeState specState, List<Norm> visited) {
 		if(visited.contains(norm)) {
 			return;
 		}
 		visited.add(norm);
 
-		/* Update complexities metrics */
-		this.nsMetrics.incNumNodesVisited();
-
 		/* Specialise down all parent norms */
 		List<Norm> parents = this.normativeNetwork.getParents(norm);
 		for(Norm parent : parents) {
-			this.deactivateUp(parent, specState, visited);
+			this.specialiseDown(parent, specState, visited);
 		}
 
+		/* Codigo nuevo: Cuando una norma hoja va mal, entonces se especializan todos
+		 * los padres que la generalizan. De esta manera, una norma general solo 
+		 * se desactiva si tiene alguna hija que va mal
+		 */
 		List<Norm> children = this.normativeNetwork.getChildren(norm);
 
 		/* Only specialise norms that are represented by
@@ -343,7 +268,7 @@ public class LIONNormRefiner {
 	 * @param genMode the SIMON generalisation mode (Shallow/Deep)
 	 * @param genStep the generalisation step
 	 */
-	public void generaliseUp(Norm normA,
+	protected void generaliseUp(Norm normA,
 			NormGeneralisationMode genMode, int genStep) {
 
 
@@ -354,9 +279,6 @@ public class LIONNormRefiner {
 		/* Compute matches with each norm */
 		for(Norm normB : NS) {
 			boolean generalise = true;
-			
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
 
 			/* Never generalise the norm with itself */
 			if(normA.equals(normB)) {
@@ -382,16 +304,10 @@ public class LIONNormRefiner {
 				continue;
 			}
 
-			/* 3. Check that the parent norm does not contain a discarded norm */
-			List<Norm> notRepresented = this.normativeNetwork.getNotRepresentedNorms();
-			
-			for(Norm norm: notRepresented) {
-				NetworkNodeState nState = this.normativeNetwork.getState(norm);
-				if(nState == NetworkNodeState.CREATED) {
-					continue;
-				}
-				if(this.normReasoner.satisfies(norm, parent) && 
-						!norm.equals(parent))	{
+			/* 3. Check that the parent norm does not contain an inactive norm */
+			for(Norm inactive: this.normativeNetwork.getNotRepresentedNorms()){
+				if(this.normReasoner.satisfies(inactive, parent) && 
+						!inactive.equals(parent))	{
 					generalise = false;
 					break;
 				}
@@ -411,10 +327,10 @@ public class LIONNormRefiner {
 			 * and active (that is, the same parent norm has been created in a 
 			 * previous generalisation with other two norms) */
 			if(this.normativeNetwork.contains(parent) && 
-					//					(this.normativeNetwork.getState(parent) == NetworkNodeState.ACTIVE ||
-					//					this.normativeNetwork.getState(parent) == NetworkNodeState.REPRESENTED)) { 
-					this.normativeNetwork.isRepresented(parent)) {
-
+//					(this.normativeNetwork.getState(parent) == NetworkNodeState.ACTIVE ||
+//					this.normativeNetwork.getState(parent) == NetworkNodeState.REPRESENTED)) { 
+				this.normativeNetwork.isRepresented(parent)) {
+				
 				// TODO: Cambiar logica con estados active / represented
 				generalise = false;
 			}
@@ -450,27 +366,20 @@ public class LIONNormRefiner {
 
 				/* Activate parent norm */
 				if(!this.normativeNetwork.isRepresented(parent)) {
-					//				if(this.normativeNetwork.getState(parent) != NetworkNodeState.ACTIVE &&
-					//						this.normativeNetwork.getState(parent) != NetworkNodeState.REPRESENTED) {
-
+//				if(this.normativeNetwork.getState(parent) != NetworkNodeState.ACTIVE &&
+//						this.normativeNetwork.getState(parent) != NetworkNodeState.REPRESENTED) {
+					
 					this.operators.activate(parent);
 					this.normativeNetwork.getUtility(parent).reset();
 				}
 
 				/* Perform the norm generalisation */
-				if(!this.normativeNetwork.isAncestor(parent, n1)) {
-					this.operators.generalise(n1, parent);	
-				}
-				if(!this.normativeNetwork.isAncestor(parent, n2)) {
-					this.operators.generalise(n2, parent); 
-				}
+				this.operators.generalise(n1, parent);
+				this.operators.generalise(n2, parent);
 
 				/* Deactivate children */
 				for(Norm child : this.normativeNetwork.getChildren(parent)) {
-					this.operators.deactivate(child, NetworkNodeState.GENERALISED); // TODO: Cambiado
-					
-					/* Update complexities metrics */
-					this.nsMetrics.incNumNodesVisited();
+					this.operators.deactivate(child, NetworkNodeState.REPRESENTED); // TODO: Cambiado
 				}
 			}
 		}
@@ -497,8 +406,8 @@ public class LIONNormRefiner {
 
 		NormModality normModality = normA.getModality();
 		NormModality otherNormModality = normB.getModality();
-		EnvironmentAgentAction action = normA.getAction();
-		EnvironmentAgentAction otherAction = normB.getAction();
+		AgentAction action = normA.getAction();
+		AgentAction otherAction = normB.getAction();
 		GeneralisableNorms genNorms = null;
 		NormIntersection intersection;
 
@@ -522,7 +431,8 @@ public class LIONNormRefiner {
 		if(intersection.getDifferenceCardinality() > 0 && 
 				intersection.getDifferenceCardinality() <= genStep) {
 
-			genNorms = new GeneralisableNorms(intersection, genStep);
+			genNorms = new GeneralisableNorms(intersection,
+					this.predDomains, genMode);
 		}		
 		return genNorms;
 	}
@@ -544,6 +454,17 @@ public class LIONNormRefiner {
 		if(nBIsComplementary &&!nAIsComplementary) {
 			return nA;
 		}
+//		String nAPrecond = nA.getPrecondition().toString();
+//		String nBPrecond = nB.getPrecondition().toString();
+//
+//		if(nAPrecond.equals("l(>)&f(>)&r(>)") || nAPrecond.equals("l(<)&f(<)&r(<)") ||
+//				nAPrecond.equals("l(>)&f(>)&r(-)") || nAPrecond.equals("l(-)&f(<)&r(<)")) {
+//			return nA; 
+//		}
+//		if(nBPrecond.equals("l(>)&f(>)&r(>)") || nBPrecond.equals("l(<)&f(<)&r(<)") ||
+//				nBPrecond.equals("l(>)&f(>)&r(-)") || nBPrecond.equals("l(-)&f(<)&r(<)")) {
+//			return nB;
+//		}
 
 		/* 2. Preserve the norm that is substituting a third norm */
 		if(this.normativeNetwork.isSubstituter(nA) &&
@@ -554,20 +475,20 @@ public class LIONNormRefiner {
 				!this.normativeNetwork.isSubstituter(nA)) {
 			return nA;
 		}
-
+		
 		/* 4. In case of a draw, promote the norm with the lowest
 		 * substitutability index (that with the lowest number of brother
 		 * norms that have been substituted */
 		double nASubsIndex = this.computeSubstitutabilityIndex(nA);
 		double nBSubsIndex = this.computeSubstitutabilityIndex(nB);
 
-
+		
 		if(nASubsIndex != nBSubsIndex) {
 			System.out.println("Subindex " + nA + ": " + nASubsIndex);
 			System.out.println("Subindex " + nB + ": " + nBSubsIndex);
 			return (nASubsIndex > nBSubsIndex ? nA : nB);
 		}
-
+		
 		/* 3. Compute the highest generalisation level in the generalisation tree
 		 * of each norm. Preserve the norm in the most generalised sub-tree */
 		double nAGenIndex = this.computeGeneralisationIndex(nA);
@@ -578,9 +499,9 @@ public class LIONNormRefiner {
 			System.out.println("Genindex " + nB + ": " + nBGenIndex);
 			return (nAGenIndex > nBGenIndex ? nB : nA);
 		}
-
+		
 		/* 5. Randomly choose one of the norms */
-		if(this.random.nextBoolean()) {
+		if(random.nextBoolean()) {
 			return nA;
 		}
 		return nB;
@@ -603,10 +524,10 @@ public class LIONNormRefiner {
 
 		/* Check that the norm is represented and not visited before */
 		if(!this.normativeNetwork.isRepresented(norm) || visited.contains(norm)) {
-			//		if((this.normativeNetwork.getState(norm) != NetworkNodeState.ACTIVE && 
-			//				this.normativeNetwork.getState(norm) != NetworkNodeState.REPRESENTED) ||
-			//				visited.contains(norm)) {
-
+//		if((this.normativeNetwork.getState(norm) != NetworkNodeState.ACTIVE && 
+//				this.normativeNetwork.getState(norm) != NetworkNodeState.REPRESENTED) ||
+//				visited.contains(norm)) {
+			
 			return 0; // TODO: Cambiar logica con estados active / represented
 		}
 		visited.add(norm);
@@ -623,10 +544,6 @@ public class LIONNormRefiner {
 			double parentGenDegree = this.computeGeneralisationDegree(parent, visited);
 			genDegree += parentGenDegree;
 		}
-
-		/* Update complexities metrics */
-		this.nsMetrics.incNumNodesVisited();
-
 		return genDegree;
 	}
 
@@ -653,15 +570,12 @@ public class LIONNormRefiner {
 		visited.add(norm);
 		List<Norm> parents = this.normativeNetwork.getParents(norm);
 		List<Norm> brothers = this.normativeNetwork.getBrothers(norm);
-
+		
 		double subsDegree = 0.0;
 		for(Norm brother : brothers) {
 			if(normativeNetwork.getState(brother) == NetworkNodeState.SUBSTITUTED) {
 				subsDegree += Math.pow(10, distance * -1);
 			}
-
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
 		}
 
 		/* Explore in height (parents) */
@@ -670,9 +584,6 @@ public class LIONNormRefiner {
 					visited, distance+1);
 			subsDegree += parentSubsDegree;
 		}
-
-		/* Update complexities metrics */
-		this.nsMetrics.incNumNodesVisited();
 		return subsDegree;
 	}
 

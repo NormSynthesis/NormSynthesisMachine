@@ -44,8 +44,6 @@ public class NormSynthesisNetwork<T> {
 	protected Map<T, NetworkNodeState> states;			// state of each node
 	protected Map<T, Utility> utilities;						// utilities of each node
 	
-	protected float normsDefaultUtility;
-	
 	//---------------------------------------------------------------------------
 	// Methods
 	//---------------------------------------------------------------------------
@@ -56,7 +54,6 @@ public class NormSynthesisNetwork<T> {
 	public NormSynthesisNetwork(NormSynthesisMachine nsm) {
 		this.nsm = nsm;
 		this.nsmSettings = nsm.getNormSynthesisSettings();		
-		this.normsDefaultUtility = nsmSettings.getNormsDefaultUtility();
 		
 		this.index = new HashMap<T, T>();
 		this.graph = new DirectedSparseMultigraph<T,NetworkEdge>();
@@ -77,10 +74,11 @@ public class NormSynthesisNetwork<T> {
 			this.index.put(node, node);
 			
 			/* Set node utility */
+			float normsDefUtility = nsmSettings.getNormsDefaultUtility();
 			int perfRangeSz = nsmSettings.getNormsPerformanceRangesSize();
 			List<Dimension> dims = this.nsm.getNormEvaluationDimensions();
 			List<Goal> goals = this.nsmSettings.getSystemGoals();
-			Utility utility = new Utility(normsDefaultUtility, perfRangeSz, dims, goals);
+			Utility utility = new Utility(normsDefUtility, perfRangeSz, dims, goals);
 			this.utilities.put(node, utility);
 		}
 	}
@@ -107,7 +105,11 @@ public class NormSynthesisNetwork<T> {
 	 * @see NetworkEdgeType
 	 */
 	protected void addRelationship(T nA, T nB, NetworkEdgeType type) {
-		this.graph.addEdge(new NetworkEdge(type), nA, nB);
+		if(this.graph.findEdge(nA, nB) == null) {
+	
+			/* Add new edge (relationship) of type "Generalisation" */
+			this.graph.addEdge(new NetworkEdge(type), nA, nB);
+		}
 	}
 
 	/**
@@ -220,14 +222,6 @@ public class NormSynthesisNetwork<T> {
 	}
 
 	/**
-	 * 
-	 * @param utility
-	 */
-	public void setNormsDefaultUtility(float utility) {
-		this.normsDefaultUtility = utility;
-	}
-	
-	/**
 	 * Returns <tt>true</tt> if the network contains the node
 	 * 
 	 * @param node the node to search for
@@ -236,4 +230,5 @@ public class NormSynthesisNetwork<T> {
 	public boolean contains(T n)	{
 		return this.graph.containsVertex(n);
 	}
+	
 }

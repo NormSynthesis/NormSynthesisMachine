@@ -106,6 +106,8 @@ public class NormEngine implements JessListener {
 	 * @param agContext the world fact that describes the context of an agent
 	 */
 	public String addFacts(SetOfPredicatesWithTerms agContext)  {
+		if(agContext == null)
+			System.out.println();
 		String facts = this.factFactory.generateFacts(agContext,
 				JessFactType.WorldFact);
 		
@@ -145,26 +147,23 @@ public class NormEngine implements JessListener {
 	 * @param norm the norm to add
 	 */
 	public void addNorm(Norm norm) {
-		if(!this.contains(norm)) 
-		{
-			SetOfPredicatesWithTerms precondition = norm.getPrecondition();
-			
-			/* Translate the norm's precondition to the format of the 
-			 * Jess rules precondition */
-			String facts = this.factFactory.generateFacts(precondition, 
-					JessFactType.RulePrecondition);
-	
-			/* Generate Jess rule */
-			String jessRule = "(defrule " + norm.getName() + " \"N\" "+ facts + "=> )";
-	
-			try {
-				ruleEngine.eval(jessRule);
-				norms.add(norm);
-			}
-			catch (JessException e) {
-				e.printStackTrace();
-			}
+		SetOfPredicatesWithTerms precondition = norm.getPrecondition();
+		
+		/* Translate the norm's precondition to the format of the 
+		 * Jess rules precondition */
+		String facts = this.factFactory.generateFacts(precondition, 
+				JessFactType.RulePrecondition);
+
+		/* Generate Jess rule */
+		String jessRule = "(defrule " + norm.getName() + " \"N\" "+ facts + "=> )";
+
+		try {
+			ruleEngine.eval(jessRule);
+			norms.add(norm);
 		}
+		catch (JessException e) {
+			e.printStackTrace();
+		}	
 	}
 
 	/**

@@ -8,21 +8,15 @@ import es.csic.iiia.nsm.norm.NormativeSystem;
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  */
 public interface NormSynthesisStrategy {
-	
+		
 	/**
 	 * 
 	 * @author "Javier Morales (jmorales@iiia.csic.es)"
 	 *
 	 */
 	public enum Option {
-		IRON, SIMON, SIMONPlus, LION; 
+		BASE, IRON, SIMON, SIMONPlus, LION; 
 	}
-//	
-//	/**
-//	 * 
-//	 * @param defaultNorms
-//	 */
-//	public void addDefaultNormativeSystem(List<Norm> defaultNorms);
 	
 	/**
 	 * Executes the strategy, performing the norm synthesis cycle
@@ -32,4 +26,17 @@ public interface NormSynthesisStrategy {
 	 */
 	public NormativeSystem execute();
 	
+	/**
+	 * Returns a map that saves the conflicts that the strategy has detected
+	 * with respect to each goal during the current tick 
+	 * 
+	 * @return 	a map that saves the conflicts that the strategy has detected
+	 * 					with respect to each goal during the current tick
+	 */
+	public boolean hasNonRegulatedConflictsThisTick();
+	
+	/**
+	 * 
+	 */
+	public void newNonRegulatedConflictsSolvedThisTick();
 }

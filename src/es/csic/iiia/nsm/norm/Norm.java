@@ -1,6 +1,6 @@
 package es.csic.iiia.nsm.norm;
 
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.net.norm.NetworkNode;
 
@@ -25,7 +25,7 @@ import es.csic.iiia.nsm.net.norm.NetworkNode;
  * 
  * @author "Javier Morales (jmorales@iiia.csic.es)"
  * @see NormModality
- * @see EnvironmentAgentAction
+ * @see AgentAction
  */
 public class Norm implements Comparable<Norm>, NetworkNode {
 
@@ -36,7 +36,7 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	private int id; // the id of the norm
 	private SetOfPredicatesWithTerms precondition; // the norm precondition
 	private NormModality modality; // the modality of the deontic operator
-	private EnvironmentAgentAction action; // the action of the deontic operator
+	private AgentAction action; // the action of the deontic operator
 //	private Goal goal; // the goal for what the norm was created to
 	
 	//---------------------------------------------------------------------------	
@@ -52,7 +52,7 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * @param goal the goal that the norm was generated to regulate 
 	 */
 	public Norm(SetOfPredicatesWithTerms precondition, NormModality modality, 
-			EnvironmentAgentAction action) {
+			AgentAction action) {
 		this.precondition = precondition;
 		this.modality = modality;
 		this.action = action;
@@ -83,7 +83,7 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * @return the name of the norm
 	 */
 	public String getName() {
-		return "n" + id;
+		return "N" + id;
 	}
 	
 	/**
@@ -109,9 +109,9 @@ public class Norm implements Comparable<Norm>, NetworkNode {
 	 * Returns the action that the norm regulates
 	 * 
 	 * @return the action that the norm regulates
-	 * @see EnvironmentAgentAction
+	 * @see AgentAction
 	 */
-	public EnvironmentAgentAction getAction() {
+	public AgentAction getAction() {
 		return this.action;
 	}
 

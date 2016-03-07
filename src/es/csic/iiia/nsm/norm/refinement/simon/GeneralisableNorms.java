@@ -3,7 +3,8 @@ package es.csic.iiia.nsm.norm.refinement.simon;
 import java.util.ArrayList;
 import java.util.List;
 
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.agent.language.SetOfStrings;
@@ -34,10 +35,8 @@ public class GeneralisableNorms {
 	private List<Norm> allNorms;
 
 	private NormModality modality;
-	private EnvironmentAgentAction action;
+	private AgentAction action;
 	private PredicatesDomains predDomains;
-
-	//	private int genStep;
 
 	//---------------------------------------------------------------------------
 	// Methods
@@ -54,8 +53,10 @@ public class GeneralisableNorms {
 	 * @param 	predDomains
 	 * @param 	genMode
 	 */
-	public GeneralisableNorms(NormIntersection intersection, int genStep) {
-		this.predDomains = intersection.getPredicatesDomains();
+	public GeneralisableNorms(NormIntersection intersection,
+			PredicatesDomains predDomains, NormGeneralisationMode genMode) {
+
+		this.predDomains = predDomains;
 		this.parent = null;
 		this.allNorms = new ArrayList<Norm>();
 
@@ -63,15 +64,7 @@ public class GeneralisableNorms {
 		this.action = intersection.getAction();
 
 		/* Search for the generalisable norms */
-		if(intersection.getDifferenceCardinality() > 0 && 
-				intersection.getDifferenceCardinality() <= genStep) 
-		{
-			this.generate(intersection);
-		}
-		
-		this.allNorms.add(normA);
-		this.allNorms.add(normB);
-		this.allNorms.add(parent);
+		this.generate(intersection);
 	}
 
 	/**
@@ -95,8 +88,6 @@ public class GeneralisableNorms {
 				new SetOfPredicatesWithTerms(intersection);
 		allPredicates.add(difference);
 
-		boolean existsParentNorm = false;
-		
 		for(String predicate : this.predDomains.getPredicates()) {
 			SetOfStrings terms = allPredicates.getTerms(predicate);
 
@@ -108,14 +99,18 @@ public class GeneralisableNorms {
 				String generalTerm = this.predDomains.getMostSpecifficGeneralisation(
 						predicate, termA, termB);
 
+				/* In case there is no term that generalises both terms, 
+				 * there is nothing to generalise */
+				if(generalTerm == null) {
+					this.parent = null;
+					return;
+				}
+
 				/* Add the general term to the parent norm, and one of the specific
 				 * terms to the each child norm */
-				if(generalTerm != null) {
-					parentPrecond.add(predicate, generalTerm);
-					normAPrecond.add(predicate, termA);
-					normBPrecond.add(predicate, termB);	
-					existsParentNorm = true;
-				}
+				parentPrecond.add(predicate, generalTerm);
+				normAPrecond.add(predicate, termA);
+				normBPrecond.add(predicate, termB);
 			}
 			/* Equal predicate. Add the pair predicate/term */
 			else {
@@ -126,11 +121,13 @@ public class GeneralisableNorms {
 			}
 		}
 
-		if(existsParentNorm) {
-			this.normA = new Norm(normAPrecond, modality, action);
-			this.normB = new Norm(normBPrecond, modality, action);
-			this.parent = new Norm(parentPrecond, modality, action);
-		}
+		this.normA = new Norm(normAPrecond, modality, action);
+		this.normB = new Norm(normBPrecond, modality, action);
+		this.parent = new Norm(parentPrecond, modality, action);
+
+		this.allNorms.add(normA);
+		this.allNorms.add(normB);
+		this.allNorms.add(parent);
 	}
 
 	/**

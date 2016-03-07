@@ -8,8 +8,6 @@ package es.csic.iiia.nsm.net.norm;
  * @see NormGroupNetwork
  */
 public enum NetworkNodeState {
-	CREATED, ACTIVE, INACTIVE, DISCARDED, 
-	GENERALISED, SPECIALISED,
-	SUBSTITUTED, EXCLUDED; 
+	ACTIVE,	DISCARDED, REPRESENTED, SPECIALISED, SUBSTITUTED, EXCLUDED, INACTIVE; 
 }
 

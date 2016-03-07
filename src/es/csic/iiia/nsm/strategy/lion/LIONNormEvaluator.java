@@ -9,14 +9,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
-import es.csic.iiia.nsm.agent.EnvironmentAgentContext;
+import es.csic.iiia.nsm.agent.AgentAction;
+import es.csic.iiia.nsm.agent.AgentContext;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
@@ -45,7 +44,7 @@ public class LIONNormEvaluator {
 	protected DomainFunctions dmFunctions;
 	protected NormativeNetwork normativeNetwork;
 	protected NormGroupNetwork normGroupNetwork;
-	protected NormSynthesisMetrics nsMetrics;
+	
 	protected LIONUtilityFunction utilityFunction;
 	protected LIONOperators operators;
 	
@@ -58,7 +57,7 @@ public class LIONNormEvaluator {
 			NormSynthesisSettings nsmSettings, DomainFunctions dmFunctions,
 			NormativeNetwork normativeNetwork, NormGroupNetwork nGroupNetwork,
 			NormReasoner normReasoner, LIONUtilityFunction utilityFunction,
-			LIONOperators operators, NormSynthesisMetrics nsMetrics) {
+			LIONOperators operators) {
 		
 		this.normEvDimensions = normEvDimensions;
 		this.nsmSettings = nsmSettings;
@@ -68,7 +67,6 @@ public class LIONNormEvaluator {
 		this.utilityFunction = utilityFunction;
 		this.normReasoner = normReasoner;
 		this.operators = operators;
-		this.nsMetrics = nsMetrics;
 		
 		this.negRewardedNorms = new HashMap<Norm, 
 				List<SetOfPredicatesWithTerms>>();
@@ -198,7 +196,7 @@ public class LIONNormEvaluator {
 					Map<Norm, Long> normsApplicableToAgents = new HashMap<Norm, Long>();
 
 					for(long agentId : jointContext.getAgentIds()) {
-						EnvironmentAgentContext agContext = jointContext.getContext(agentId);
+						AgentContext agContext = jointContext.getContext(agentId);
 
 						/* Retrieve norms that apply to the agent context, and compute
 						 * norm compliance outcomes */
@@ -261,11 +259,11 @@ public class LIONNormEvaluator {
 				 * applicable, and then we retrieve the agent's norm compliance
 				 * (whether it fulfilled the norm or not) */
 				NormCompliance complN1 = this.normReasoner.
-						hasFulfilledNorm(agN1, n1, vTrans) ? NormCompliance.FULFILMENT : 
+						hasFulfilledNorm(vTrans, agN1, n1) ? NormCompliance.FULFILMENT : 
 							NormCompliance.INFRINGEMENT;
 
 				NormCompliance complN2 = this.normReasoner.
-						hasFulfilledNorm(agN2, n2, vTrans) ? NormCompliance.FULFILMENT : 
+						hasFulfilledNorm(vTrans, agN2, n2) ? NormCompliance.FULFILMENT : 
 							NormCompliance.INFRINGEMENT;
 
 				/* Retrieve norm group that corresponds to the norms compliance */
@@ -379,7 +377,7 @@ public class LIONNormEvaluator {
 		List<Long> agentIds = new ArrayList<Long>();
 		View pView = viewTransition.getView(-1);
 		View view = viewTransition.getView(0);
-		EnvironmentAgentContext ag1Context, ag2Context;
+		AgentContext ag1Context, ag2Context;
 		long agent1Id, agent2Id;
 
 		/* Just check joint contexts for those agents that
@@ -450,7 +448,7 @@ public class LIONNormEvaluator {
 
 			for(SetOfPredicatesWithTerms precond : agContexts) {
 				NormModality mod = norm.getModality();
-				EnvironmentAgentAction action = norm.getAction();
+				AgentAction action = norm.getAction();
 
 				boolean exists = this.normativeNetwork.
 						contains(precond, mod, action);
@@ -462,9 +460,6 @@ public class LIONNormEvaluator {
 					this.operators.activate(specNorm);
 				}
 			}
-			
-//			/* Update complexities metrics */
-//			this.nsMetrics.incNumNodesVisited();
 		}
 	}
 }

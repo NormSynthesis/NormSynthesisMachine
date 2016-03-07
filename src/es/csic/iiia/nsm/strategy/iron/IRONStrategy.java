@@ -6,14 +6,13 @@ import java.util.List;
 import java.util.Map;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
-import es.csic.iiia.nsm.agent.EnvironmentAgentAction;
+import es.csic.iiia.nsm.agent.AgentAction;
 import es.csic.iiia.nsm.agent.language.PredicatesDomains;
 import es.csic.iiia.nsm.agent.language.SetOfPredicatesWithTerms;
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.DomainFunctions;
 import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.config.NormSynthesisSettings;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NetworkNodeState;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
@@ -44,9 +43,8 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	private NormSynthesisMachine nsm;
 	private NormSynthesisSettings nsmSettings; 
 	private NormReasoner normReasoner;
-	private NormReasoner normEvaluationReasoner;
 	private NormativeNetwork normativeNetwork;
-	private NormSynthesisMetrics nsMetrics;
+
 	private PredicatesDomains predDomains;
 	private DomainFunctions dmFunctions;
 	private Monitor monitor;
@@ -65,6 +63,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	private List<Norm> 	normAdditions;
 	private List<Norm> normDeactivations;
 	
+	private boolean hasNonRegulatedConflictsThisTick;
 	
 	//---------------------------------------------------------------------------
 	// Methods
@@ -82,17 +81,14 @@ public class IRONStrategy implements NormSynthesisStrategy {
 		this.dmFunctions = nsm.getDomainFunctions();
 		this.normativeNetwork = nsm.getNormativeNetwork();
 		this.monitor = nsm.getMonitor();
-		this.nsMetrics = nsm.getNormSynthesisMetrics();
-		
-		this.normReasoner = nsm.getNormReasoner();
-		this.normEvaluationReasoner = nsm.getNormEvaluationReasoner();
 		
 		this.genTrees = new GeneralisationTrees(this.predDomains, 
-				this.dmFunctions, this.normativeNetwork, this.nsMetrics);
-		
-		this.operators = new IRONOperators(this, normReasoner,
-				normEvaluationReasoner, nsm);
-		this.utilityFunction = new IRONUtilityFunction(this.nsMetrics);
+				this.dmFunctions, this.normativeNetwork);
+		this.normReasoner = new NormReasoner(this.nsmSettings.getSystemGoals(), 
+				this.predDomains, this.dmFunctions);
+
+		this.operators = new IRONOperators(this, nsm, normReasoner);
+		this.utilityFunction = new IRONUtilityFunction();
 
 		this.normCompliance = new HashMap<Goal, NormComplianceOutcomes>();
 		this.conflicts = new HashMap<Goal, List<Conflict>>();
@@ -106,6 +102,8 @@ public class IRONStrategy implements NormSynthesisStrategy {
 		for(Goal goal : nsmSettings.getSystemGoals()) {
 			this.normCompliance.put(goal, new NormComplianceOutcomes());
 		}
+		
+		this.hasNonRegulatedConflictsThisTick = false;
 	}
 
 	/**
@@ -166,8 +164,6 @@ public class IRONStrategy implements NormSynthesisStrategy {
 		/* Specialise under performing norms, try to
 		 * generalise norms that do not under perform */
 		for(Norm norm : norms) {
-//			if(norm.getId() == 94)
-//				System.out.println();
 			if(this.normativeNetwork.getState(norm) == NetworkNodeState.ACTIVE) {
 				if(isUnderperforming(norm)) {
 					this.specialiseDown(norm);
@@ -176,11 +172,8 @@ public class IRONStrategy implements NormSynthesisStrategy {
 					this.generaliseUp(norm);
 				}
 			}
-			
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
 		}
-				
+		
 		/* Return the normative system */
 		return normativeNetwork.getNormativeSystem();
 	}
@@ -209,8 +202,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	 */
 	private Map<Goal, List<Conflict>> conflictDetection(
 			List<ViewTransition> viewTransitions) {
-
-		this.nsMetrics.resetNonRegulatedConflicts();
+		this.hasNonRegulatedConflictsThisTick = false;
 		this.conflicts.clear();
 		
 		/* Conflict detection is computed in terms of a goal */
@@ -245,7 +237,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 		/* Get applicable norms of each viewTransition (of each sensor) */
 		for(ViewTransition vTrans : vTransitions) {
 			NormsApplicableInView normApplicability;
-			normApplicability = this.normEvaluationReasoner.getNormsApplicable(vTrans);
+			normApplicability = this.normReasoner.getNormsApplicable(vTrans);
 			this.normApplicability.put(vTrans, normApplicability);
 		}
 		return this.normApplicability;
@@ -279,7 +271,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 
 			/* Check norm compliance in the view in terms of each system goal */
 			for(Goal goal : this.nsmSettings.getSystemGoals()) {
-				NormComplianceOutcomes nCompliance = this.normEvaluationReasoner.
+				NormComplianceOutcomes nCompliance = this.normReasoner.
 						checkNormComplianceAndOutcomes(vNormAppl, goal);
 
 				this.normCompliance.put(goal, nCompliance);
@@ -293,7 +285,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	 * 
 	 * @param normCompliance the norm compliance in the current time step
 	 */
-	private void updateUtilitiesAndPerformances(
+	private void	updateUtilitiesAndPerformances(
 			Map<Goal, NormComplianceOutcomes> normCompliance) {
 
 		for(Dimension dim : this.nsm.getNormEvaluationDimensions())	{
@@ -317,19 +309,12 @@ public class IRONStrategy implements NormSynthesisStrategy {
 			List<Norm> children = generalisation.getChildren();
 
 			for(Norm child : children) {
-				this.operators.add(child);
-				
-				/* Update computation metrics */
-				this.nsMetrics.incNumNodesVisited();
+				this.operators.add(child);				
 			}
 			this.operators.add(parent);
 			
 			/* Generalise norms */
 			operators.generalise(normativeNetwork, parent, children);
-			generalisation.setPerformed(true);
-			
-			/* Update computation metrics */
-			this.nsMetrics.incNumNodesVisited();
 		}
 	}
 
@@ -369,14 +354,8 @@ public class IRONStrategy implements NormSynthesisStrategy {
 				{
 					this.specialiseDown(child);
 				}
-				
-				/* Update complexities metrics */
-				this.nsMetrics.incNumNodesVisited();
 			}
 		}
-		
-		/* Update complexities metrics */
-		this.nsMetrics.incNumNodesVisited();
 	}
 
 	/**
@@ -390,7 +369,7 @@ public class IRONStrategy implements NormSynthesisStrategy {
 			for(Goal goal : this.nsmSettings.getSystemGoals()) {
 				
 				Utility utility = this.normativeNetwork.getUtility(norm);
-				float topBoundary = (float)utility.getPerformanceRange(dim, goal).getCurrentTopBoundary();
+				float topBoundary = utility.getPerformanceRange(dim, goal).getCurrentTopBoundary();
 				float satDegree = this.nsmSettings.getSpecialisationBoundary(dim, goal);
 
 				if(topBoundary < satDegree) {
@@ -408,18 +387,14 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	 */
 	private boolean hasGeneralisationUtility(Norm norm, NormativeNetwork nNetwork) {
 		for(Dimension dim : this.nsm.getNormEvaluationDimensions())	 {
-			for(Goal goal : this.nsmSettings.getSystemGoals()) 
-			{
+			for(Goal goal : this.nsmSettings.getSystemGoals()) {
+				float satDegree = this.nsmSettings.getGeneralisationBoundary(dim, goal);
 				Utility utility = nNetwork.getUtility(norm);
-				float genBoundary = this.nsmSettings.getGeneralisationBoundary(dim, goal);
-				float score = utility.getScore(dim, goal);
-				
-				if(score < genBoundary) {
-					return false;
-				}
+
+				return utility.getScore(Dimension.Effectiveness, goal) >= satDegree;
 			}
 		}
-		return true;
+		return false;
 	}
 
 	/**
@@ -437,12 +412,10 @@ public class IRONStrategy implements NormSynthesisStrategy {
 			/* Only perform the generalisation if it has not been performed */
 			if(!potGen.isPerformed()) {
 				if(this.isValid(potGen, nNetwork)) {
+					potGen.setPerformed(true);
 					validGens.add(potGen);
 				}	
-			} 
-			
-			/* Update computation metrics */
-			this.nsMetrics.incNumNodesVisited();
+			}
 		}
 		return validGens;
 	}
@@ -454,17 +427,12 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	 * 
 	 * @return
 	 */
-	private boolean isValid(PotentialGeneralisation candGen,
-			NormativeNetwork nNetwork) {
-		
+	private boolean isValid(PotentialGeneralisation candGen, NormativeNetwork nNetwork) {
 		for(Norm norm : candGen.getChildren()) {
 			SetOfPredicatesWithTerms precond = norm.getPrecondition();
 			NormModality modality = norm.getModality();
-			EnvironmentAgentAction action = norm.getAction();
+			AgentAction action = norm.getAction();
 
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
-			
 			// If child does not exist -> Not valid
 			if(!nNetwork.contains(precond, modality, action))
 				return false;
@@ -509,6 +477,14 @@ public class IRONStrategy implements NormSynthesisStrategy {
 	public void normDeactivated(Norm norm) {
 		this.normDeactivations.add(norm);
 	}
+
+	/**
+	 * 
+	 * @return
+	 */
+	public boolean hasNonRegulatedConflictsThisTick() {
+		return this.hasNonRegulatedConflictsThisTick;
+	}
 	
 	/**
 	 * 
@@ -518,12 +494,11 @@ public class IRONStrategy implements NormSynthesisStrategy {
 		return this.genTrees;
 	}
 
-	/* (non-Javadoc)
-	 * @see es.csic.iiia.nsm.strategy.NormSynthesisStrategy#addDefaultNormativeSystem(java.util.List)
+	/**
+	 * 
 	 */
-  public void addDefaultNormativeSystem(List<Norm> defaultNorms) {
-	  for(Norm norm : defaultNorms) {
-	  	this.operators.add(norm);
-	  }
+  @Override
+  public void newNonRegulatedConflictsSolvedThisTick() {
+	  this.hasNonRegulatedConflictsThisTick = true;
   }
 }

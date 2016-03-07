@@ -15,6 +15,7 @@ import es.csic.iiia.nsm.norm.generation.Conflict;
 import es.csic.iiia.nsm.norm.generation.NormGenerationMachine;
 import es.csic.iiia.nsm.norm.generation.cbr.CBRNormGenerationMachine;
 import es.csic.iiia.nsm.norm.reasoning.NormReasoner;
+import es.csic.iiia.nsm.norm.refinement.lion.NormAttribute;
 
 /**
  * The operators that the SIMON strategy uses to perform norm synthesis
@@ -30,11 +31,10 @@ public class SIMONOperators {
 	protected NormReasoner normReasoner;					// norm reasoner
 	protected DomainFunctions dmFunctions;				// domain functions
 	protected PredicatesDomains predDomains;			// predicates and their domains
-	protected SIMONStrategy strategy;							// the norm synthesis strategy
+	protected NormSynthesisMetrics nsMetrics;
 	protected NormativeNetwork normativeNetwork;	// the normative network
-	protected NormGenerationMachine genMachine;		// the norm generation machine
-	protected NormSynthesisMetrics nsMetrics;			// norm synthesis metrics
-	
+	protected NormGenerationMachine genMachine;	// the norm generation machine
+
 	//---------------------------------------------------------------------------
 	// Methods
 	//---------------------------------------------------------------------------
@@ -50,15 +50,15 @@ public class SIMONOperators {
 	public SIMONOperators(SIMONStrategy strategy, NormReasoner normReasoner, 
 			NormSynthesisMachine nsm) {
 
-		this.strategy = strategy;
+		//		this.strategy = strategy;
 		this.normReasoner = normReasoner;
-		this.nsMetrics = nsm.getNormSynthesisMetrics();
 		this.dmFunctions = nsm.getDomainFunctions();
 		this.predDomains = nsm.getPredicatesDomains();
 		this.normativeNetwork = nsm.getNormativeNetwork();
+		this.nsMetrics = nsm.getNormSynthesisMetrics();
 
 		this.genMachine = new CBRNormGenerationMachine(this.normativeNetwork,
-				normReasoner, strategy, nsm.getRandom(), nsm.getNormSynthesisMetrics());
+				normReasoner,strategy,nsm.getRandom());
 	}
 
 	/**
@@ -71,7 +71,7 @@ public class SIMONOperators {
 	 * @see Conflict
 	 * @see Goal
 	 */
-	public List<Norm> create(Conflict conflict, Goal goal) {
+	public void create(Conflict conflict, Goal goal) {
 		List<Norm> normsToAdd = new ArrayList<Norm>();
 		List<Norm> normsToActivate = new ArrayList<Norm>();
 		List<Norm> norms;
@@ -86,11 +86,10 @@ public class SIMONOperators {
 			if(!normativeNetwork.contains(norm)) {
 				normsToAdd.add(norm);
 			}
-
 			/* If the normative network contains the norm, but it is not represented
 			 * (that is, the norm and all its ancestors are inactive),
 			 * then activate the norm */
-			else if(!normativeNetwork.isRepresented(norm)) {
+			else	if(!normativeNetwork.isRepresented(norm)) {
 				normsToActivate.add(norm);
 			}
 		}
@@ -98,15 +97,16 @@ public class SIMONOperators {
 		/* Add norms to add */
 		for(Norm norm : normsToAdd)	{
 			this.add(norm);
-			this.activate(norm);
+			//			this.activate(norm);
+			//			this.link(norm);
 		}
 
-		/* Reactivate norms */
+		/* Activate norms */
 		for(Norm norm : normsToActivate)	{
 			this.activate(norm);
 			this.normativeNetwork.getUtility(norm).reset();
+			this.normativeNetwork.removeAttribute(norm, NormAttribute.GENERALISABLE);
 		}
-		return normsToActivate;
 	}
 
 	/**
@@ -125,7 +125,7 @@ public class SIMONOperators {
 			/* Activate the norm and link it to other norms in the network */
 			this.activate(norm);
 			this.link(norm);
-			
+
 			/* Update complexities metrics */
 			this.nsMetrics.incNumNodesSynthesised();
 			this.nsMetrics.incNumNodesInMemory();
@@ -141,11 +141,11 @@ public class SIMONOperators {
 	 * @param norm the norm to activate
 	 */	
 	public void activate(Norm norm) {
-		if(!normativeNetwork.isRepresented(norm)) {
-			normativeNetwork.setState(norm, NetworkNodeState.ACTIVE);
-//			normativeNetwork.removeAttribute(norm, NormAttribute.GENERALISABLE);
-			normativeNetwork.resetAttributes(norm);
-		}
+		this.normativeNetwork.setState(norm, NetworkNodeState.ACTIVE);
+
+		//		/* Add norm to the norm engine */
+		//		this.normReasoner.addNorm(norm);
+		//		this.strategy.normActivated(norm);
 	}
 
 	/**
@@ -155,8 +155,12 @@ public class SIMONOperators {
 	 * 
 	 * @param norm the norm to deactivate
 	 */
-	public void deactivate(Norm norm, NetworkNodeState newState) {
-		this.normativeNetwork.setState(norm, newState);
+	public void deactivate(Norm norm) {
+		this.normativeNetwork.setState(norm, NetworkNodeState.INACTIVE);
+
+		/* Remove the norm from the norm engine */
+		//		this.normReasoner.removeNorm(norm);
+		//		this.strategy.normDeactivated(norm);
 	}
 
 	/**
@@ -172,13 +176,13 @@ public class SIMONOperators {
 		 * an ancestor (the parent norm, likely) */
 		for(Norm p : this.normativeNetwork.getParents(child)) {
 			if(this.normativeNetwork.isRepresented(p)) {
-				this.deactivate(child, NetworkNodeState.GENERALISED); 
+				this.deactivate(child);
 				break;
 			}
-			
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
 		}
+		
+		/* Update complexities metrics */
+		this.nsMetrics.incNumNodesVisited();
 	}
 
 	/**
@@ -187,32 +191,25 @@ public class SIMONOperators {
 	 * @param norm the norm to specialise
 	 * @param children the children into which to specialise the norm
 	 */
-	public void specialise(Norm norm, NetworkNodeState specState, List<Norm> children) {
-
-		/* Deactivation of a general norm TODO: Cambiado */
-		if(children.size() > 0) {
-			this.deactivate(norm, NetworkNodeState.SPECIALISED);
-		}
-		else {
-			this.deactivate(norm, specState); // TODO: Set the reason to specialise in the leaf
-		}
+	public void specialise(Norm norm, List<Norm> children) {
+		this.deactivate(norm);
 
 		/* Activate child norms that are not represented by an ancestor */
 		for(Norm child : children) {
 			if(!normativeNetwork.isRepresented(child)) {
 				this.activate(child);
 			}
-			
-			/* Update complexities metrics */
-			this.nsMetrics.incNumNodesVisited();
 		}
+		
+		/* Update complexities metrics */
+		this.nsMetrics.incNumNodesVisited();
 	}
 
 	/**
 	 * 
 	 * @param norm
 	 */
-	public void link(Norm norm) {
+	private void link(Norm norm) {
 		List<Norm> topBoundary =
 				(List<Norm>)this.normativeNetwork.getTopBoundary();
 		List<Norm> visitedNorms = new ArrayList<Norm>();

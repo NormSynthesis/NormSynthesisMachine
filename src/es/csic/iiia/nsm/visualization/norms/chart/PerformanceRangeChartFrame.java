@@ -11,9 +11,9 @@ import org.jfree.ui.ApplicationFrame;
 
 import es.csic.iiia.nsm.NormSynthesisMachine;
 import es.csic.iiia.nsm.config.Dimension;
+import es.csic.iiia.nsm.config.Goal;
 import es.csic.iiia.nsm.net.norm.NetworkNode;
 import es.csic.iiia.nsm.norm.Norm;
-import es.csic.iiia.nsm.norm.evaluation.PerformanceRange;
 import es.csic.iiia.nsm.norm.group.NormGroup;
 
 /**

@@ -2,7 +2,6 @@ package es.csic.iiia.nsm.strategy.iron;
 
 import es.csic.iiia.nsm.config.Dimension;
 import es.csic.iiia.nsm.config.Goal;
-import es.csic.iiia.nsm.metrics.NormSynthesisMetrics;
 import es.csic.iiia.nsm.net.norm.NormativeNetwork;
 import es.csic.iiia.nsm.norm.Norm;
 import es.csic.iiia.nsm.norm.evaluation.NormComplianceOutcomes;
@@ -17,19 +16,9 @@ import es.csic.iiia.nsm.norm.evaluation.NormComplianceOutcomes;
  */
 public class IRONUtilityFunction  {
 
-//	private NormSynthesisMetrics nsMetrics;
-	
 	//---------------------------------------------------------------------------
 	// Methods 
 	//---------------------------------------------------------------------------
-	
-	/**
-	 * 
-	 * @param nsMetrics
-	 */
-	public IRONUtilityFunction(NormSynthesisMetrics nsMetrics) {
-//		this.nsMetrics = nsMetrics;
-	}
 	
 	/**
 	 * Evaluates the norms that have been complied and infringed during the current
@@ -69,9 +58,6 @@ public class IRONUtilityFunction  {
 				reward = (float) nANoC / (nAC + nANoC); 
 				score = (float) (oldScore + 0.1 * (reward - oldScore));
 				nNetwork.setScore(appNorm, dim, goal, score);
-				
-//				/* Update complexities metrics */
-//				this.nsMetrics.incNumNodesVisited();
 			}
 			break;
 
@@ -79,7 +65,6 @@ public class IRONUtilityFunction  {
 		case Necessity:
 
 			for(Norm violNorm : nCompliance.getInfringedNorms()) {
-				
 				int nVC = nCompliance.getNumInfringementsWithConflict(violNorm);
 				int nVNoC = nCompliance.getNumInfrsWithNoConflict(violNorm);	
 
@@ -88,9 +73,6 @@ public class IRONUtilityFunction  {
 				score = (float) (oldScore + 0.1 * (reward - oldScore));
 
 				nNetwork.setScore(violNorm, dim, goal, score);
-				
-//				/* Update complexities metrics */
-//				this.nsMetrics.incNumNodesVisited();
 			}
 			break;
 		}

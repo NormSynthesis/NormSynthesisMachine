@@ -61,58 +61,6 @@ public class NormComplianceOutcomes {
 	 * @param agContext the context in which an agent fulfilled the norm
 	 * @param norm the norm that an agent fulfilled
 	 */
-	public void addFulfilmentsWithConflict(SetOfPredicatesWithTerms agContext,
-			Norm norm, int num) {
-		for(int i=0; i<num; i++) {
-			this.add(numFulfilmentsWithConflict, fulfilledNorms, agContext, norm);
-		}
-	}
-	
-	/**
-	 * Adds a new norm compliance that did not end up with conflicts
-	 * 
-	 * @param agContext the context in which an agent fulfilled the norm
-	 * @param norm the norm that an agent fulfilled
-	 */
-	public void addFulfilmentsWithNoConflict(SetOfPredicatesWithTerms agContext, 
-			Norm norm, int num) {
-		for(int i=0; i<num; i++) {
-			this.add(numFulfilmentsWithNoConflict, fulfilledNorms, agContext, norm);	
-		}
-	}
-
-	/**
-	 * Adds a new norm infringement that lead to conflicts
-	 * 
-	 * @param agContext the context in which an agent infringed the norm
-	 * @param norm the norm that an agent infringed
-	 */
-	public void addInfringementsWithConflict(SetOfPredicatesWithTerms agContext, 
-			Norm norm, int num) {
-		for(int i=0; i<num; i++) {
-			this.add(numInfringementsWithConflict, infringedNorms, agContext, norm);
-		}
-	}
-
-	/**
-	 * Adds a new norm infringement that did not end up with conflicts
-	 * 
-	 * @param agContext the context in which an agent infringed the norm
-	 * @param norm the norm that an agent infringed
-	 */
-	public void addInfringementsWithNoConflict(SetOfPredicatesWithTerms agContext,
-			Norm norm, int num) {
-		for(int i=0; i<num; i++) {
-			this.add(numInfringementsWithNoConflict, infringedNorms, agContext, norm);
-		}
-	}
-
-	/**
-	 * Adds a new norm compliance that lead to conflicts
-	 * 
-	 * @param agContext the context in which an agent fulfilled the norm
-	 * @param norm the norm that an agent fulfilled
-	 */
 	public void addFulfilmentWithConflict(SetOfPredicatesWithTerms agContext,
 			Norm norm) {
 		this.add(numFulfilmentsWithConflict, fulfilledNorms, agContext, norm);

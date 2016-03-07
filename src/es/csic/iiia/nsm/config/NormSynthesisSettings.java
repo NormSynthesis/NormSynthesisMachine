@@ -14,9 +14,9 @@ import es.csic.iiia.nsm.NormSynthesisMachine.NormGeneralisationMode;
 public interface NormSynthesisSettings {
 
 	/**
-	 * Returns the mode of the norm synthesis (CUSTOM, IRON, SIMON, LION)
+	 * Returns the mode of the norm synthesis (CUSTOM, IRON, SIMON, XSIMON)
 	 * 
-	 * @return the mode of the norm synthesis (CUSTOM, IRON, SIMON, LION)
+	 * @return the mode of the norm synthesis (CUSTOM, IRON, SIMON, XSIMON)
 	 */
 	public String getNormSynthesisStrategy();
 		
@@ -29,19 +29,6 @@ public interface NormSynthesisSettings {
 	 * @see Goal
 	 */
 	public List<Goal> getSystemGoals();
-	
-	/* Norm generation settings */
-	
-	/**
-	 * Returns true if the norm generation stage must be extremely
-	 * reactive to conflicts, namely if norms must be generated
-	 * from a single conflict. Otherwise, it returns false. 
-	 * 
-	 * @return 	true if the norm generation stage must be extremely
-	 * 					reactive to conflicts, namely if norms must be generated
-	 * 					from a single conflict. Otherwise, it returns false.
-	 */
-	public boolean isNormGenerationReactiveToConflicts();
 	
 	/* Norm evaluation settings */
 	
@@ -90,7 +77,7 @@ public interface NormSynthesisSettings {
 	 * 					used during the norm refinement phase
 	 */
 	public int getNormGeneralisationStep();
-
+	
 	/**
 	 * Returns the boundary under which a norm's utility is
 	 * considered low enough to specialise the norm 
@@ -143,18 +130,4 @@ public interface NormSynthesisSettings {
 	 * @return the number of ticks of stability
 	 */
 	public long getNumTicksOfStabilityForConvergence();
-	
-
-	/**
-	 * 
-	 * @return
-	 */
-	public int getMinEvaluationsToClassifyNorms();
-		
-	/**
-	 * 
-	 * @return
-	 */
-	public int getMinEvaluationsToClassifyNormGroups();
-	
 }
